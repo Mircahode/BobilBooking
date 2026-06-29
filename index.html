@@ -1,0 +1,1864 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bobil Booking</title>
+<style>
+  :root{
+    --bg:#0f172a; --bg2:#111827; --panel:#1e293b; --panel2:#162033;
+    --border:#2c3a52; --text:#e2e8f0; --muted:#94a3b8;
+    --accent:#22c55e; --accent2:#3b82f6; --warn:#f59e0b; --danger:#ef4444;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:linear-gradient(180deg,#0b1220,#0f172a); color:var(--text); min-height:100vh;
+  }
+  .app{display:flex; min-height:100vh;}
+  .sidebar{
+    width:230px; background:var(--bg2); border-right:1px solid var(--border);
+    padding:20px 14px; display:flex; flex-direction:column; gap:6px; flex-shrink:0;
+  }
+  .brand{font-size:18px; font-weight:700; margin-bottom:18px; display:flex; align-items:center; gap:8px;}
+  .brand span.emoji{font-size:22px;}
+  .nav-btn{
+    background:none; border:none; color:var(--muted); text-align:left; padding:10px 12px;
+    border-radius:8px; cursor:pointer; font-size:14px; display:flex; align-items:center; gap:10px;
+  }
+  .nav-btn:hover{background:var(--panel); color:var(--text);}
+  .nav-btn.active{background:var(--accent2); color:white;}
+  .main{flex:1; display:flex; flex-direction:column; min-width:0;}
+  .topbar{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:16px 28px; border-bottom:1px solid var(--border); background:var(--bg2);
+  }
+  .topbar h1{font-size:20px; margin:0; font-weight:600;}
+  .content{padding:24px 28px; overflow-y:auto;}
+  .btn{
+    border:none; border-radius:8px; padding:10px 16px; font-size:14px; font-weight:600;
+    cursor:pointer; transition:.15s; color:white;
+  }
+  .btn:hover{filter:brightness(1.1); transform:translateY(-1px);}
+  .btn-primary{background:var(--accent2);}
+  .btn-success{background:var(--accent);}
+  .btn-warn{background:var(--warn); color:#1f2937;}
+  .btn-danger{background:var(--danger);}
+  .btn-ghost{background:var(--panel); color:var(--text); border:1px solid var(--border);}
+  .btn-sm{padding:6px 10px; font-size:12px;}
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:24px;}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px;
+  }
+  .card .label{color:var(--muted); font-size:13px; margin-bottom:6px;}
+  .card .value{font-size:26px; font-weight:700;}
+  .card .sub{font-size:12px; color:var(--muted); margin-top:4px;}
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:20px; margin-bottom:20px;
+  }
+  .panel h2{margin:0 0 14px 0; font-size:16px;}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th, td{padding:9px 8px; text-align:left; border-bottom:1px solid var(--border);}
+  th{color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .pill{padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; display:inline-block;}
+  .pill-ok{background:rgba(34,197,94,.15); color:#4ade80;}
+  .pill-pending{background:rgba(245,158,11,.15); color:#fbbf24;}
+  .pill-cancel{background:rgba(239,68,68,.15); color:#f87171;}
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center;
+    z-index:100; padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+    width:100%; max-width:520px; max-height:90vh; overflow-y:auto; padding:24px;
+  }
+  .modal h2{margin-top:0;}
+  .form-row{margin-bottom:14px;}
+  .form-row label{display:block; font-size:12px; color:var(--muted); margin-bottom:5px;}
+  .form-row input, .form-row select, .form-row textarea{
+    width:100%; padding:9px 10px; border-radius:7px; border:1px solid var(--border);
+    background:var(--bg); color:var(--text); font-size:14px;
+  }
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+  .calendar-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+  .calendar-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
+  .cal-dow{text-align:center; color:var(--muted); font-size:12px; padding:4px 0;}
+  .cal-day{
+    background:var(--panel2); border:1px solid var(--border); border-radius:8px; min-height:86px;
+    padding:6px; font-size:11px; position:relative; display:flex; flex-direction:column; gap:3px;
+  }
+  .cal-day.other-month{opacity:.35;}
+  .cal-day.today{border-color:var(--accent2); box-shadow:0 0 0 1px var(--accent2) inset;}
+  .cal-daynum{font-weight:700; font-size:12px; color:var(--muted);}
+  .cal-booking{
+    border-radius:5px; padding:2px 5px; color:white; font-size:10px; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; cursor:pointer;
+  }
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px;}
+  .legend-item{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted);}
+  .legend-dot{width:10px; height:10px; border-radius:50%;}
+  select.vehicle-filter{width:auto; display:inline-block;}
+  .empty{color:var(--muted); font-size:13px; padding:20px; text-align:center;}
+  .receipt{background:white; color:#111; padding:30px; border-radius:8px; font-size:14px;}
+  .receipt h2{margin-top:0;}
+  .receipt table{font-size:13px;}
+  .receipt th, .receipt td{border-bottom:1px solid #ddd; color:#111;}
+  .row-actions{display:flex; gap:6px;}
+  .tag{display:inline-flex; align-items:center; gap:6px;}
+  .color-dot{width:10px; height:10px; border-radius:50%; display:inline-block; flex-shrink:0;}
+  .help{font-size:11px; color:var(--muted); margin-top:4px;}
+  .toast{
+    position:fixed; bottom:24px; right:24px; background:var(--panel); border:1px solid var(--border);
+    padding:12px 18px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,.4); z-index:200; display:none;
+    font-size:13px;
+  }
+  .topbar-actions{display:flex; gap:10px;}
+  @media print{
+    .app > .sidebar, .topbar{display:none;}
+    body{background:white;}
+    .modal-actions{display:none !important;}
+    .modal-overlay{position:static !important; background:none !important;}
+    .modal{box-shadow:none !important; max-height:none !important; overflow:visible !important;}
+  }
+  #login-overlay .form-row label{ color:var(--text); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body>
+
+<div id="login-overlay" style="position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:500;">
+  <div style="width:100%; max-width:340px; padding:32px; background:var(--panel); border:1px solid var(--border); border-radius:12px;">
+    <div style="font-size:20px; font-weight:700; margin-bottom:4px;">🚐 Bobil Booking</div>
+    <div class="help" style="margin-bottom:18px;">Skriv inn passord for å logge inn.</div>
+    <div class="form-row">
+      <label>Passord</label>
+      <input type="password" id="login-password" autocomplete="current-password">
+    </div>
+    <div id="login-error" style="display:none; color:#f87171; font-size:13px; margin-bottom:10px;"></div>
+    <button class="btn btn-primary" id="login-btn" style="width:100%;">Logg inn</button>
+    <div id="login-status" class="help" style="margin-top:12px;"></div>
+  </div>
+</div>
+
+<div class="app" id="app-root" style="display:none;">
+  <div class="sidebar">
+    <div class="brand"><span class="emoji">🚐</span> Bobil Booking</div>
+    <button class="nav-btn active" data-view="dashboard">📊 Dashbord</button>
+    <button class="nav-btn" data-view="calendar">📅 Kalender</button>
+    <button class="nav-btn" data-view="bookings">📋 Bookinger</button>
+    <button class="nav-btn" data-view="vehicles">🚙 Biler</button>
+    <button class="nav-btn" data-view="customers">👤 Leietakere</button>
+    <button class="nav-btn" data-view="costs">💸 Kostnader</button>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <h1 id="page-title">Dashbord</h1>
+      <div class="topbar-actions">
+        <span id="sync-status" style="font-size:12px; color:#94a3b8; align-self:center; margin-right:4px;"></span>
+        <button class="btn btn-ghost btn-sm" id="settings-btn">🏢 Min info</button>
+        <button class="btn btn-ghost btn-sm" id="export-btn">⬇️ Eksporter data</button>
+        <button class="btn btn-ghost btn-sm" id="import-btn">⬆️ Importer data</button>
+        <input type="file" id="import-file" accept=".json" style="display:none;">
+        <button class="btn btn-ghost btn-sm" id="logout-btn">🔒 Logg ut</button>
+        <button class="btn btn-success" id="new-booking-btn">+ Ny booking</button>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- BOOKING MODAL -->
+<div class="modal-overlay" id="booking-modal-overlay">
+  <div class="modal">
+    <h2 id="booking-modal-title">Ny booking</h2>
+    <input type="hidden" id="booking-id">
+    <div class="form-row">
+      <label>Bil</label>
+      <select id="b-vehicle"></select>
+    </div>
+    <div class="form-row">
+      <label>Leietaker</label>
+      <select id="b-customer"></select>
+      <div class="help">Velg eksisterende, eller <a href="#" id="quick-add-customer" style="color:#60a5fa;">legg til ny leietaker</a></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Hentedato</label>
+        <input type="date" id="b-start">
+      </div>
+      <div class="form-row">
+        <label>Returdato</label>
+        <input type="date" id="b-end">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="help" id="b-price-breakdown">Velg bil og datoer for prisforslag.</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Totalpris (kr)</label>
+        <input type="number" id="b-price" min="0" step="1">
+      </div>
+      <div class="form-row">
+        <label>Depositum (kr)</label>
+        <input type="number" id="b-deposit" min="0" step="1">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Status</label>
+      <select id="b-status">
+        <option value="bekreftet">Bekreftet</option>
+        <option value="forespørsel">Forespørsel</option>
+        <option value="avlyst">Avlyst</option>
+      </select>
+    </div>
+
+    <div class="panel" style="background:var(--panel2); margin:0 0 14px 0; padding:14px;">
+      <div style="font-size:13px; font-weight:600; margin-bottom:10px;">Betaling og depositum</div>
+      <div class="form-grid">
+        <div class="form-row" style="margin-bottom:8px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="b-deposit-paid" style="width:auto;"> Depositum innbetalt
+          </label>
+        </div>
+        <div class="form-row" id="b-deposit-paid-date-row" style="margin-bottom:8px; display:none;">
+          <label>Dato innbetalt</label>
+          <input type="date" id="b-deposit-paid-date">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row" style="margin-bottom:8px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="b-deposit-returned" style="width:auto;"> Depositum returnert
+          </label>
+        </div>
+        <div class="form-row" id="b-deposit-returned-date-row" style="margin-bottom:8px; display:none;">
+          <label>Dato returnert</label>
+          <input type="date" id="b-deposit-returned-date">
+        </div>
+      </div>
+      <div class="form-row" id="b-deposit-returned-amount-row" style="display:none; margin-bottom:8px;">
+        <label>Beløp returnert (kr) — kan være lavere enn depositum hvis noe er trukket</label>
+        <input type="number" id="b-deposit-returned-amount" min="0" step="1">
+      </div>
+      <div class="form-row" id="b-deposit-notes-row" style="display:none; margin-bottom:0;">
+        <label>Notater om depositum (f.eks. skade, trekk)</label>
+        <input type="text" id="b-deposit-notes">
+      </div>
+      <div class="form-row" style="margin:10px 0 0 0;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="b-rent-paid" style="width:auto;"> Leiebeløp fullt betalt
+        </label>
+        <div class="help">Depositum er i tillegg til leiebeløpet, og betales tilbake ved levering hvis bilen er uskadet.</div>
+      </div>
+    </div>
+
+    <div class="panel" style="background:var(--panel2); margin:0 0 14px 0; padding:14px;">
+      <div style="font-size:13px; font-weight:600; margin-bottom:10px;">Kilometerstand</div>
+      <div class="form-grid">
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Ved henting</label>
+          <input type="number" id="b-km-start" min="0" step="1">
+        </div>
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Ved levering</label>
+          <input type="number" id="b-km-end" min="0" step="1">
+        </div>
+      </div>
+      <div class="help" id="b-km-driven"></div>
+    </div>
+
+    <div class="panel" style="background:var(--panel2); margin:0 0 14px 0; padding:14px;">
+      <div style="font-size:13px; font-weight:600; margin-bottom:10px;">Skaderapport ved retur</div>
+      <div class="form-row" style="margin-bottom:10px;">
+        <label>Beskrivelse av eventuell skade</label>
+        <textarea id="b-damage-notes" rows="2" placeholder="Ingen skader ved retur, eller beskriv hva som er observert..."></textarea>
+      </div>
+      <div class="form-row" style="margin-bottom:8px;">
+        <label>Bilder (lastes ned i bilens egen oppløsning, lagres i denne filen)</label>
+        <input type="file" id="b-damage-files" accept="image/*" multiple>
+      </div>
+      <div id="b-damage-preview" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+    </div>
+
+    <div class="form-row">
+      <label>Notater</label>
+      <textarea id="b-notes" rows="2"></textarea>
+    </div>
+    <div id="b-conflict-warning" style="display:none; color:#f87171; font-size:12px; margin-bottom:10px;">
+      ⚠️ Denne bilen er allerede booket i deler av denne perioden.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="booking-cancel">Avbryt</button>
+      <button class="btn btn-primary" id="booking-save">Lagre booking</button>
+    </div>
+  </div>
+</div>
+
+<!-- VEHICLE MODAL -->
+<div class="modal-overlay" id="vehicle-modal-overlay">
+  <div class="modal">
+    <h2 id="vehicle-modal-title">Ny bil</h2>
+    <input type="hidden" id="vehicle-id">
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Navn / modell</label>
+        <input type="text" id="v-name" placeholder="f.eks. Hymer B-klasse">
+      </div>
+      <div class="form-row">
+        <label>Reg.nr</label>
+        <input type="text" id="v-regnr" placeholder="EX12345">
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Dagpris (kr)</label>
+        <input type="number" id="v-daily" min="0" step="1">
+      </div>
+      <div class="form-row">
+        <label>Helgepris/natt fre-lør (kr)</label>
+        <input type="number" id="v-weekend" min="0" step="1">
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Høysesongpris/natt (kr)</label>
+        <input type="number" id="v-highseason" min="0" step="1">
+      </div>
+      <div class="form-row">
+        <label>Farge i kalender</label>
+        <input type="color" id="v-color" value="#3b82f6">
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Høysesong fra (dd.mm)</label>
+        <input type="text" id="v-hs-start" placeholder="15.06">
+      </div>
+      <div class="form-row">
+        <label>Høysesong til (dd.mm)</label>
+        <input type="text" id="v-hs-end" placeholder="15.08">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Notater</label>
+      <textarea id="v-notes" rows="2" placeholder="f.eks. neste EU-kontroll, forsikringsselskap..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="vehicle-cancel">Avbryt</button>
+      <button class="btn btn-primary" id="vehicle-save">Lagre bil</button>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOMER MODAL -->
+<div class="modal-overlay" id="customer-modal-overlay">
+  <div class="modal">
+    <h2 id="customer-modal-title">Ny leietaker</h2>
+    <input type="hidden" id="customer-id">
+    <div class="form-row">
+      <label>Navn</label>
+      <input type="text" id="c-name">
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Telefon</label>
+        <input type="text" id="c-phone">
+      </div>
+      <div class="form-row">
+        <label>E-post</label>
+        <input type="email" id="c-email">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Notater</label>
+      <textarea id="c-notes" rows="2"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="customer-cancel">Avbryt</button>
+      <button class="btn btn-primary" id="customer-save">Lagre leietaker</button>
+    </div>
+  </div>
+</div>
+
+<!-- COST MODAL -->
+<div class="modal-overlay" id="cost-modal-overlay">
+  <div class="modal">
+    <h2 id="cost-modal-title">Ny kostnad</h2>
+    <input type="hidden" id="cost-id">
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Bil</label>
+        <select id="k-vehicle"></select>
+      </div>
+      <div class="form-row">
+        <label>Dato</label>
+        <input type="date" id="k-date">
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Kategori</label>
+        <select id="k-category">
+          <option>Service/vedlikehold</option>
+          <option>Forsikring</option>
+          <option>Vask/rens</option>
+          <option>Parkering/oppstalling</option>
+          <option>Drivstoff/gass</option>
+          <option>EU-kontroll</option>
+          <option>Avgifter</option>
+          <option>Annet</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Beløp (kr)</label>
+        <input type="number" id="k-amount" min="0" step="1">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Notater</label>
+      <textarea id="k-notes" rows="2"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cost-cancel">Avbryt</button>
+      <button class="btn btn-primary" id="cost-save">Lagre kostnad</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal-overlay">
+  <div class="modal">
+    <h2>Min info (utleier)</h2>
+    <div class="help" style="margin-bottom:14px;">Brukes til å fylle ut leiekontrakter automatisk.</div>
+    <div class="form-row">
+      <label>Navn / firmanavn</label>
+      <input type="text" id="s-name">
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Adresse</label>
+        <input type="text" id="s-address">
+      </div>
+      <div class="form-row">
+        <label>Org.nr (hvis firma)</label>
+        <input type="text" id="s-orgnr">
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Telefon</label>
+        <input type="text" id="s-phone">
+      </div>
+      <div class="form-row">
+        <label>E-post</label>
+        <input type="email" id="s-email">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Kontonummer (for betaling/depositum)</label>
+      <input type="text" id="s-bank">
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Inkludert kjørelengde (km/dag)</label>
+        <input type="number" id="s-included-km" min="0" step="1" placeholder="200">
+      </div>
+      <div class="form-row">
+        <label>Pris pr. km over (kr)</label>
+        <input type="number" id="s-km-price" min="0" step="0.5" placeholder="3.50">
+      </div>
+    </div>
+    <div class="help" style="margin-top:-6px; margin-bottom:10px;">Fri kjørelengde akkumuleres over hele leieperioden (f.eks. 5 dager × 200 km = 1000 km inkludert).</div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Gebyr innvendig vask (hvis ikke vasket)</label>
+        <input type="number" id="s-cleaning-fee" min="0" step="50" placeholder="500">
+      </div>
+      <div class="form-row">
+        <label>Gebyr tømming toalett/vanntank/gråvann</label>
+        <input type="number" id="s-toilet-fee" min="0" step="50" placeholder="500">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="settings-cancel">Avbryt</button>
+      <button class="btn btn-primary" id="settings-save">Lagre</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTRACT MODAL -->
+<div class="modal-overlay" id="contract-modal-overlay">
+  <div class="modal" style="max-width:680px;">
+    <div class="receipt" id="contract-content"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="contract-close">Lukk</button>
+      <button class="btn btn-primary" id="contract-print">🖨️ Skriv ut / lagre som PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIXED COST MODAL -->
+<div class="modal-overlay" id="fixedcost-modal-overlay">
+  <div class="modal" style="max-width:560px;">
+    <h2 id="fixedcost-modal-title">Faste kostnader</h2>
+    <input type="hidden" id="fixedcost-vehicle-id">
+    <div class="help" style="margin-bottom:14px;">Faste, løpende utgifter for denne bilen (lån, forsikring, oppstalling osv.). Disse legges automatisk til kostnadene per måned i dashbordet, uten at du behøver å registrere dem hver gang.</div>
+    <div id="fixedcost-list" style="margin-bottom:18px;"></div>
+    <div style="border-top:1px solid var(--border); padding-top:14px;">
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Type</label>
+          <select id="fc-category">
+            <option>Lån/finansiering</option>
+            <option>Forsikring</option>
+            <option>Oppstalling/parkering</option>
+            <option>Veihjelp/medlemskap</option>
+            <option>Annet fast</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Beløp per måned (kr)</label>
+          <input type="number" id="fc-amount" min="0" step="1">
+        </div>
+      </div>
+      <div class="form-row">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="fc-active" checked style="width:auto;"> Aktiv (regnes med i dashbordet)
+        </label>
+      </div>
+      <div class="modal-actions" style="margin-top:10px;">
+        <button class="btn btn-primary btn-sm" id="fixedcost-add">+ Legg til fast kostnad</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="fixedcost-close">Lukk</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECEIPT MODAL -->
+<div class="modal-overlay" id="receipt-modal-overlay">
+  <div class="modal" style="max-width:600px;">
+    <div class="receipt" id="receipt-content"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="receipt-close">Lukk</button>
+      <button class="btn btn-primary" id="receipt-print">🖨️ Skriv ut / lagre som PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== CLOUD SYNC CONFIG ===================== */
+/* Fyll inn disse to verdiene fra ditt Supabase-prosjekt (Project Settings > API). */
+const SUPABASE_URL = "https://kydkjszbgdgvvkiicftg.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_maTxWGDwgcVBnpaCLNKGFA_UmrrPGLx";
+/* Dette er e-postadressen knyttet til Supabase Auth-brukeren du oppretter (kun brukt internt, ikke synlig for andre). */
+const AUTH_EMAIL = "steffen.skaar@gmail.com";
+
+const cloudEnabled = SUPABASE_URL.startsWith("http");
+const supabaseClient = cloudEnabled ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+function setSyncStatus(text){
+  const el = document.getElementById("sync-status");
+  if(el) el.textContent = text;
+}
+
+/* ===================== DATA LAYER ===================== */
+const STORAGE_KEY = "bobilBookingData_v1";
+
+function loadLocalData(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw){
+    try { return JSON.parse(raw); } catch(e){ console.error(e); }
+  }
+  return { vehicles: [], customers: [], bookings: [], costs: [], fixedCosts: [], settings: {} };
+}
+
+let DB = loadLocalData();
+let saveDebounceTimer = null;
+
+function applyMigrations(){
+  if(!DB.fixedCosts) DB.fixedCosts = [];
+  if(!DB.settings) DB.settings = {};
+  if(!DB.vehicles) DB.vehicles = [];
+  if(!DB.customers) DB.customers = [];
+  if(!DB.bookings) DB.bookings = [];
+  if(!DB.costs) DB.costs = [];
+  DB.bookings.forEach(b=>{
+    if(b.depositPaid === undefined) b.depositPaid = false;
+    if(b.depositReturned === undefined) b.depositReturned = false;
+    if(b.rentPaid === undefined) b.rentPaid = false;
+    if(b.damageImages === undefined) b.damageImages = [];
+  });
+}
+applyMigrations();
+
+function saveData(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+  } catch(e){
+    alert("Kunne ikke lagre lokalt: lagringsplassen i nettleseren er full. Dette skjer typisk hvis det er lastet opp mange/store skadebilder. Prøv å fjerne noen bilder, eller eksporter data og slett gamle bookinger.");
+    console.error(e);
+  }
+  if(cloudEnabled){
+    setSyncStatus("Lagrer …");
+    clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = setTimeout(pushToCloud, 600);
+  }
+}
+
+async function pushToCloud(){
+  if(!cloudEnabled) return;
+  try{
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const userId = sessionData && sessionData.session ? sessionData.session.user.id : null;
+    if(!userId) return;
+    const { error } = await supabaseClient.from("app_state").upsert({
+      user_id: userId,
+      data: DB,
+      updated_at: new Date().toISOString()
+    }, { onConflict: "user_id" });
+    if(error) throw error;
+    setSyncStatus("☁️ Lagret i skyen");
+  } catch(e){
+    console.error(e);
+    setSyncStatus("⚠️ Kunne ikke lagre i skyen (lagret lokalt)");
+  }
+}
+
+async function pullFromCloud(){
+  if(!cloudEnabled) return false;
+  try{
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const userId = sessionData && sessionData.session ? sessionData.session.user.id : null;
+    if(!userId) return false;
+    const { data, error } = await supabaseClient.from("app_state").select("data").eq("user_id", userId).maybeSingle();
+    if(error) throw error;
+    if(data && data.data){
+      DB = data.data;
+      applyMigrations();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+      setSyncStatus("☁️ Hentet fra skyen");
+    } else {
+      /* Ingen sky-data ennå - send opp det vi har lokalt */
+      await pushToCloud();
+      setSyncStatus("☁️ Tilkoblet");
+    }
+    return true;
+  } catch(e){
+    console.error(e);
+    setSyncStatus("⚠️ Kunne ikke koble til skyen, bruker lokal data");
+    return false;
+  }
+}
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+/* Seed demo data on first run */
+if(DB.vehicles.length === 0 && DB.customers.length === 0 && DB.bookings.length === 0){
+  const v1 = { id: uid(), name: "Hymer B-klasse Modern", regnr: "EX 12345", dailyRate: 1500, weekendRate: 1900, highSeasonRate: 2400, hsStart: "15.06", hsEnd: "15.08", color: "#3b82f6", notes: "Neste EU-kontroll: oktober 2026" };
+  DB.vehicles.push(v1);
+  DB.fixedCosts.push({ id: uid(), vehicleId: v1.id, category: "Lån/finansiering", amountPerMonth: 3500, active: true });
+  DB.fixedCosts.push({ id: uid(), vehicleId: v1.id, category: "Forsikring", amountPerMonth: 800, active: true });
+  const c1 = { id: uid(), name: "Ola Nordmann", phone: "91234567", email: "ola@eksempel.no", notes: "Stamkunde, alltid punktlig." };
+  DB.customers.push(c1);
+  saveData();
+}
+
+/* ===================== HELPERS ===================== */
+function fmtKr(n){ return (Math.round(n||0)).toLocaleString("nb-NO") + " kr"; }
+function fmtDate(d){ return new Date(d).toLocaleDateString("nb-NO", {day:"2-digit", month:"2-digit", year:"numeric"}); }
+function toISO(date){ return date.toISOString().slice(0,10); }
+function addDays(dateStr, n){ const d = new Date(dateStr+"T00:00:00"); d.setDate(d.getDate()+n); return toISO(d); }
+function nightsBetween(start, end){
+  const s = new Date(start+"T00:00:00"), e = new Date(end+"T00:00:00");
+  return Math.round((e-s) / 86400000);
+}
+function isWeekendNight(dateStr){
+  // night defined by its start date; weekend = Friday or Saturday night
+  const day = new Date(dateStr+"T00:00:00").getDay(); // 0=sun..6=sat
+  return day === 5 || day === 6;
+}
+function isHighSeason(dateStr, vehicle){
+  if(!vehicle.hsStart || !vehicle.hsEnd) return false;
+  const [d, m] = dateStr.split("-").slice(1).reverse(); // not used
+  const date = new Date(dateStr+"T00:00:00");
+  const mmdd = (date.getMonth()+1)*100 + date.getDate();
+  const parse = (s) => { const [dd,mm] = s.split("."); return parseInt(mm)*100 + parseInt(dd); };
+  const startMMDD = parse(vehicle.hsStart), endMMDD = parse(vehicle.hsEnd);
+  if(startMMDD <= endMMDD){
+    return mmdd >= startMMDD && mmdd <= endMMDD;
+  } else {
+    // wraps around year end
+    return mmdd >= startMMDD || mmdd <= endMMDD;
+  }
+}
+function calcPrice(vehicle, start, end){
+  const n = nightsBetween(start, end);
+  let total = 0;
+  const lines = [];
+  let counts = {high:0, weekend:0, normal:0};
+  for(let i=0;i<n;i++){
+    const night = addDays(start, i);
+    let rate, label;
+    if(isHighSeason(night, vehicle) && vehicle.highSeasonRate){
+      rate = vehicle.highSeasonRate; label = "høysesong"; counts.high++;
+    } else if(isWeekendNight(night) && vehicle.weekendRate){
+      rate = vehicle.weekendRate; label = "helg"; counts.weekend++;
+    } else {
+      rate = vehicle.dailyRate || 0; label = "normal"; counts.normal++;
+    }
+    total += rate;
+  }
+  let parts = [];
+  if(counts.high) parts.push(`${counts.high} natt(netter) høysesong à ${fmtKr(vehicle.highSeasonRate)}`);
+  if(counts.weekend) parts.push(`${counts.weekend} natt(netter) helg à ${fmtKr(vehicle.weekendRate)}`);
+  if(counts.normal) parts.push(`${counts.normal} natt(netter) normal à ${fmtKr(vehicle.dailyRate)}`);
+  return { total, nights: n, breakdown: parts.join(", ") || "Ingen netter valgt" };
+}
+function bookingsOverlap(aStart, aEnd, bStart, bEnd){
+  return aStart < bEnd && bStart < aEnd;
+}
+function vehicleById(id){ return DB.vehicles.find(v=>v.id===id); }
+function customerById(id){ return DB.customers.find(c=>c.id===id); }
+function bookingById(id){ return DB.bookings.find(b=>b.id===id); }
+function monthlyFixedCostsForVehicle(vehicleId){
+  return DB.fixedCosts.filter(f=>f.vehicleId===vehicleId && f.active!==false).reduce((s,f)=>s+Number(f.amountPerMonth||0),0);
+}
+function totalMonthlyFixedCosts(){
+  return DB.fixedCosts.filter(f=>f.active!==false).reduce((s,f)=>s+Number(f.amountPerMonth||0),0);
+}
+function depositPill(b){
+  if(!b.deposit) return '<span class="pill" style="background:rgba(148,163,184,.15); color:#94a3b8;">Ingen</span>';
+  if(b.depositReturned) return '<span class="pill pill-ok">Returnert</span>';
+  if(b.depositPaid) return '<span class="pill pill-pending">Betalt, ikke returnert</span>';
+  return '<span class="pill pill-cancel">Ikke betalt</span>';
+}
+function rentPill(b){
+  return b.rentPaid ? '<span class="pill pill-ok">Betalt</span>' : '<span class="pill pill-cancel">Ikke betalt</span>';
+}
+function resizeImageFile(file, maxWidth=900, quality=0.72){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve({ name: file.name, dataUrl: canvas.toDataURL("image/jpeg", quality) });
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>{ t.style.display="none"; }, 2600);
+}
+
+/* ===================== NAVIGATION ===================== */
+const titles = {
+  dashboard: "Dashbord", calendar: "Kalender", bookings: "Bookinger",
+  vehicles: "Biler", customers: "Leietakere", costs: "Kostnader"
+};
+let currentView = "dashboard";
+let calMonth = new Date(); calMonth.setDate(1);
+let calVehicleFilter = "all";
+
+document.querySelectorAll(".nav-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    currentView = btn.dataset.view;
+    document.getElementById("page-title").textContent = titles[currentView];
+    render();
+  });
+});
+
+function render(){
+  const c = document.getElementById("content");
+  if(currentView === "dashboard") c.innerHTML = renderDashboard();
+  else if(currentView === "calendar") c.innerHTML = renderCalendar();
+  else if(currentView === "bookings") c.innerHTML = renderBookings();
+  else if(currentView === "vehicles") c.innerHTML = renderVehicles();
+  else if(currentView === "customers") c.innerHTML = renderCustomers();
+  else if(currentView === "costs") c.innerHTML = renderCosts();
+  attachViewHandlers();
+}
+
+/* ===================== DASHBOARD ===================== */
+function renderDashboard(){
+  const now = new Date();
+  const ym = now.getFullYear()*100 + (now.getMonth()+1);
+  const yearNow = now.getFullYear();
+
+  const inMonth = (dateStr) => { const d=new Date(dateStr+"T00:00:00"); return (d.getFullYear()*100+(d.getMonth()+1)) === ym; };
+  const inYear = (dateStr) => new Date(dateStr+"T00:00:00").getFullYear() === yearNow;
+
+  const confirmed = DB.bookings.filter(b=>b.status==="bekreftet");
+  const monthRevenue = confirmed.filter(b=>inMonth(b.startDate)).reduce((s,b)=>s+Number(b.totalPrice||0),0);
+  const yearRevenue = confirmed.filter(b=>inYear(b.startDate)).reduce((s,b)=>s+Number(b.totalPrice||0),0);
+  const monthFixedCosts = totalMonthlyFixedCosts();
+  const yearFixedCosts = monthFixedCosts * (now.getMonth()+1); // antar faste kostnader har løpt hele året så langt
+  const monthOneOffCosts = DB.costs.filter(k=>inMonth(k.date)).reduce((s,k)=>s+Number(k.amount||0),0);
+  const yearOneOffCosts = DB.costs.filter(k=>inYear(k.date)).reduce((s,k)=>s+Number(k.amount||0),0);
+  const monthCosts = monthOneOffCosts + monthFixedCosts;
+  const yearCosts = yearOneOffCosts + yearFixedCosts;
+  const monthProfit = monthRevenue - monthCosts;
+  const yearProfit = yearRevenue - yearCosts;
+
+  // occupancy this month
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  let bookedNights = 0;
+  const totalAvailable = DB.vehicles.length * daysInMonth;
+  confirmed.forEach(b=>{
+    const s = new Date(Math.max(new Date(b.startDate), new Date(now.getFullYear(), now.getMonth(),1)));
+    const e = new Date(Math.min(new Date(b.endDate), new Date(now.getFullYear(), now.getMonth()+1,1)));
+    if(e>s) bookedNights += Math.round((e-s)/86400000);
+  });
+  const occupancy = totalAvailable>0 ? Math.round((bookedNights/totalAvailable)*100) : 0;
+
+  const upcoming = DB.bookings
+    .filter(b=>b.status!=="avlyst" && b.endDate >= toISO(new Date()))
+    .sort((a,b)=>a.startDate.localeCompare(b.startDate))
+    .slice(0,6);
+
+  const todayISO2 = toISO(new Date());
+  const needsAttention = DB.bookings.filter(b=>{
+    if(b.status==="avlyst") return false;
+    const depositIssue = b.deposit>0 && !b.depositPaid && b.startDate <= addDays(todayISO2, 7) && b.startDate >= todayISO2;
+    const returnIssue = b.deposit>0 && b.depositPaid && !b.depositReturned && b.endDate <= todayISO2;
+    const rentIssue = !b.rentPaid && b.startDate <= todayISO2;
+    return depositIssue || returnIssue || rentIssue;
+  }).sort((a,b)=>a.endDate.localeCompare(b.endDate));
+
+  const revenueByVehicle = DB.vehicles.map(v=>{
+    const rev = confirmed.filter(b=>b.vehicleId===v.id && inYear(b.startDate)).reduce((s,b)=>s+Number(b.totalPrice||0),0);
+    return { v, rev };
+  }).sort((a,b)=>b.rev-a.rev);
+  const maxRev = Math.max(1, ...revenueByVehicle.map(r=>r.rev));
+
+  return `
+    <div class="cards">
+      <div class="card"><div class="label">Inntekt denne måned</div><div class="value" style="color:#4ade80;">${fmtKr(monthRevenue)}</div><div class="sub">Bekreftede bookinger</div></div>
+      <div class="card"><div class="label">Kostnader denne måned</div><div class="value" style="color:#f87171;">${fmtKr(monthCosts)}</div><div class="sub">herav ${fmtKr(monthFixedCosts)} faste kostnader</div></div>
+      <div class="card"><div class="label">Resultat denne måned</div><div class="value" style="color:${monthProfit>=0?'#4ade80':'#f87171'};">${fmtKr(monthProfit)}</div></div>
+      <div class="card"><div class="label">Belegg denne måned</div><div class="value">${occupancy}%</div><div class="sub">${bookedNights} av ${totalAvailable} tilgjengelige netter</div></div>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="label">Inntekt i år (${yearNow})</div><div class="value" style="color:#4ade80;">${fmtKr(yearRevenue)}</div></div>
+      <div class="card"><div class="label">Kostnader i år</div><div class="value" style="color:#f87171;">${fmtKr(yearCosts)}</div><div class="sub">herav ${fmtKr(yearFixedCosts)} faste kostnader</div></div>
+      <div class="card"><div class="label">Resultat i år</div><div class="value" style="color:${yearProfit>=0?'#4ade80':'#f87171'};">${fmtKr(yearProfit)}</div></div>
+      <div class="card"><div class="label">Antall biler</div><div class="value">${DB.vehicles.length}</div><div class="sub">${DB.customers.length} leietakere registrert</div></div>
+    </div>
+
+    <div class="panel">
+      <h2>Inntekt per bil i år</h2>
+      ${revenueByVehicle.length===0 ? '<div class="empty">Ingen biler lagt til ennå.</div>' :
+        revenueByVehicle.map(r=>`
+          <div style="margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+              <span>${r.v.name}</span><span>${fmtKr(r.rev)}</span>
+            </div>
+            <div style="background:var(--bg); border-radius:6px; height:10px; overflow:hidden;">
+              <div style="height:100%; width:${(r.rev/maxRev*100).toFixed(1)}%; background:${r.v.color};"></div>
+            </div>
+          </div>
+        `).join("")
+      }
+    </div>
+
+    <div class="panel">
+      <h2>⚠️ Krever oppfølging (betaling/depositum)</h2>
+      ${needsAttention.length===0 ? '<div class="empty">Ingen åpne saker akkurat nå. 🎉</div>' : `
+      <table>
+        <tr><th>Bil</th><th>Leietaker</th><th>Hentes</th><th>Returneres</th><th>Leie</th><th>Depositum</th><th></th></tr>
+        ${needsAttention.map(b=>{
+          const v = vehicleById(b.vehicleId), c = customerById(b.customerId);
+          return `<tr>
+            <td><span class="tag"><span class="color-dot" style="background:${v?v.color:'#888'}"></span>${v?v.name:"Ukjent"}</span></td>
+            <td>${c?c.name:"Ukjent"}</td>
+            <td>${fmtDate(b.startDate)}</td>
+            <td>${fmtDate(b.endDate)}</td>
+            <td>${rentPill(b)}</td>
+            <td>${depositPill(b)}</td>
+            <td class="row-actions">
+              <button class="btn btn-ghost btn-sm" data-edit-booking="${b.id}">Åpne</button>
+            </td>
+          </tr>`;
+        }).join("")}
+      </table>`}
+    </div>
+
+    <div class="panel">
+      <h2>Kommende bookinger</h2>
+      ${upcoming.length===0 ? '<div class="empty">Ingen kommende bookinger.</div>' : `
+      <table>
+        <tr><th>Bil</th><th>Leietaker</th><th>Hentes</th><th>Returneres</th><th>Status</th><th>Pris</th></tr>
+        ${upcoming.map(b=>{
+          const v = vehicleById(b.vehicleId), c = customerById(b.customerId);
+          return `<tr>
+            <td><span class="tag"><span class="color-dot" style="background:${v?v.color:'#888'}"></span>${v?v.name:"Ukjent"}</span></td>
+            <td>${c?c.name:"Ukjent"}</td>
+            <td>${fmtDate(b.startDate)}</td>
+            <td>${fmtDate(b.endDate)}</td>
+            <td>${statusPill(b.status)}</td>
+            <td>${fmtKr(b.totalPrice)}</td>
+          </tr>`;
+        }).join("")}
+      </table>`}
+    </div>
+  `;
+}
+function statusPill(status){
+  if(status==="bekreftet") return '<span class="pill pill-ok">Bekreftet</span>';
+  if(status==="avlyst") return '<span class="pill pill-cancel">Avlyst</span>';
+  return '<span class="pill pill-pending">Forespørsel</span>';
+}
+
+/* ===================== CALENDAR ===================== */
+function renderCalendar(){
+  const year = calMonth.getFullYear(), month = calMonth.getMonth();
+  const monthName = calMonth.toLocaleDateString("nb-NO", {month:"long", year:"numeric"});
+  const firstOfMonth = new Date(year, month, 1);
+  let startWeekday = (firstOfMonth.getDay() + 6) % 7; // make Monday=0
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const totalCells = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
+  const todayISO = toISO(new Date());
+
+  const vehicleOptions = `<option value="all">Alle biler</option>` +
+    DB.vehicles.map(v=>`<option value="${v.id}">${v.name}</option>`).join("");
+
+  let cellsHtml = "";
+  for(let i=0;i<totalCells;i++){
+    const dayNum = i - startWeekday + 1;
+    const dateObj = new Date(year, month, dayNum);
+    const dateISO = toISO(dateObj);
+    const isOtherMonth = dayNum < 1 || dayNum > daysInMonth;
+    const dayBookings = DB.bookings.filter(b=>{
+      if(b.status==="avlyst") return false;
+      if(calVehicleFilter!=="all" && b.vehicleId!==calVehicleFilter) return false;
+      return dateISO >= b.startDate && dateISO < b.endDate;
+    });
+    cellsHtml += `
+      <div class="cal-day ${isOtherMonth?'other-month':''} ${dateISO===todayISO?'today':''}">
+        <div class="cal-daynum">${dateObj.getDate()}</div>
+        ${dayBookings.map(b=>{
+          const v = vehicleById(b.vehicleId), c = customerById(b.customerId);
+          return `<div class="cal-booking" style="background:${v?v.color:'#666'}" data-booking="${b.id}" title="${v?v.name:''} - ${c?c.name:''}">${c?c.name:'?'}</div>`;
+        }).join("")}
+      </div>`;
+  }
+
+  const dows = ["Man","Tir","Ons","Tor","Fre","Lør","Søn"];
+
+  return `
+    <div class="panel">
+      <div class="calendar-head">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="btn btn-ghost btn-sm" id="cal-prev">←</button>
+          <strong style="font-size:16px; text-transform:capitalize;">${monthName}</strong>
+          <button class="btn btn-ghost btn-sm" id="cal-next">→</button>
+          <button class="btn btn-ghost btn-sm" id="cal-today">I dag</button>
+        </div>
+        <select class="vehicle-filter" id="cal-vehicle-filter">${vehicleOptions}</select>
+      </div>
+      <div class="legend">
+        ${DB.vehicles.map(v=>`<div class="legend-item"><span class="legend-dot" style="background:${v.color}"></span>${v.name}</div>`).join("")}
+      </div>
+      <div class="calendar-grid">
+        ${dows.map(d=>`<div class="cal-dow">${d}</div>`).join("")}
+        ${cellsHtml}
+      </div>
+    </div>
+  `;
+}
+
+/* ===================== BOOKINGS LIST ===================== */
+function renderBookings(){
+  const sorted = [...DB.bookings].sort((a,b)=>b.startDate.localeCompare(a.startDate));
+  return `
+    <div class="panel">
+      <h2>Alle bookinger</h2>
+      ${sorted.length===0 ? '<div class="empty">Ingen bookinger registrert. Klikk "+ Ny booking" for å starte.</div>' : `
+      <table>
+        <tr><th>Bil</th><th>Leietaker</th><th>Hentes</th><th>Returneres</th><th>Status</th><th>Pris</th><th>Leie betalt</th><th>Depositum</th><th></th></tr>
+        ${sorted.map(b=>{
+          const v = vehicleById(b.vehicleId), c = customerById(b.customerId);
+          return `<tr>
+            <td><span class="tag"><span class="color-dot" style="background:${v?v.color:'#888'}"></span>${v?v.name:"(slettet bil)"}</span></td>
+            <td>${c?c.name:"(slettet leietaker)"}</td>
+            <td>${fmtDate(b.startDate)}</td>
+            <td>${fmtDate(b.endDate)}</td>
+            <td>${statusPill(b.status)}</td>
+            <td>${fmtKr(b.totalPrice)}</td>
+            <td>${rentPill(b)}</td>
+            <td>${depositPill(b)}</td>
+            <td class="row-actions">
+              <button class="btn btn-ghost btn-sm" data-contract="${b.id}">Kontrakt</button>
+              <button class="btn btn-ghost btn-sm" data-receipt="${b.id}">Kvittering</button>
+              <button class="btn btn-ghost btn-sm" data-edit-booking="${b.id}">Rediger</button>
+              <button class="btn btn-danger btn-sm" data-del-booking="${b.id}">Slett</button>
+            </td>
+          </tr>`;
+        }).join("")}
+      </table>`}
+    </div>
+  `;
+}
+
+/* ===================== VEHICLES ===================== */
+function renderVehicles(){
+  return `
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <h2 style="margin:0;">Biler til utleie</h2>
+        <button class="btn btn-primary btn-sm" id="add-vehicle-btn">+ Legg til bil</button>
+      </div>
+      ${DB.vehicles.length===0 ? '<div class="empty">Ingen biler lagt til ennå.</div>' : `
+      <table>
+        <tr><th>Bil</th><th>Reg.nr</th><th>Dagpris</th><th>Helgepris</th><th>Høysesong</th><th>Periode</th><th>Faste kostn./mnd</th><th></th></tr>
+        ${DB.vehicles.map(v=>`
+          <tr>
+            <td><span class="tag"><span class="color-dot" style="background:${v.color}"></span>${v.name}</span></td>
+            <td>${v.regnr||"-"}</td>
+            <td>${fmtKr(v.dailyRate)}</td>
+            <td>${v.weekendRate?fmtKr(v.weekendRate):"-"}</td>
+            <td>${v.highSeasonRate?fmtKr(v.highSeasonRate):"-"}</td>
+            <td>${v.hsStart&&v.hsEnd? v.hsStart+" – "+v.hsEnd : "-"}</td>
+            <td>${fmtKr(monthlyFixedCostsForVehicle(v.id))}</td>
+            <td class="row-actions">
+              <button class="btn btn-ghost btn-sm" data-fixedcosts-vehicle="${v.id}">Faste kostnader</button>
+              <button class="btn btn-ghost btn-sm" data-edit-vehicle="${v.id}">Rediger</button>
+              <button class="btn btn-danger btn-sm" data-del-vehicle="${v.id}">Slett</button>
+            </td>
+          </tr>
+        `).join("")}
+      </table>`}
+    </div>
+  `;
+}
+
+/* ===================== CUSTOMERS ===================== */
+function renderCustomers(){
+  return `
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <h2 style="margin:0;">Leietakere</h2>
+        <button class="btn btn-primary btn-sm" id="add-customer-btn">+ Legg til leietaker</button>
+      </div>
+      ${DB.customers.length===0 ? '<div class="empty">Ingen leietakere registrert ennå.</div>' : `
+      <table>
+        <tr><th>Navn</th><th>Telefon</th><th>E-post</th><th>Antall bookinger</th><th>Totalt brukt</th><th></th></tr>
+        ${DB.customers.map(c=>{
+          const myBookings = DB.bookings.filter(b=>b.customerId===c.id);
+          const total = myBookings.filter(b=>b.status==="bekreftet").reduce((s,b)=>s+Number(b.totalPrice||0),0);
+          return `<tr>
+            <td>${c.name}</td>
+            <td>${c.phone||"-"}</td>
+            <td>${c.email||"-"}</td>
+            <td>${myBookings.length}</td>
+            <td>${fmtKr(total)}</td>
+            <td class="row-actions">
+              <button class="btn btn-ghost btn-sm" data-edit-customer="${c.id}">Rediger</button>
+              <button class="btn btn-danger btn-sm" data-del-customer="${c.id}">Slett</button>
+            </td>
+          </tr>`;
+        }).join("")}
+      </table>`}
+    </div>
+  `;
+}
+
+/* ===================== COSTS ===================== */
+function renderCosts(){
+  const sorted = [...DB.costs].sort((a,b)=>b.date.localeCompare(a.date));
+  const totalAll = sorted.reduce((s,k)=>s+Number(k.amount||0),0);
+  const fixedTotal = totalMonthlyFixedCosts();
+  return `
+    <div class="panel">
+      <h2>Faste kostnader (per måned)</h2>
+      <div class="help" style="margin-bottom:12px;">Lån, forsikring, oppstalling osv. registreres per bil under "Biler" → "Faste kostnader", og legges automatisk til i dashbordet hver måned.</div>
+      ${DB.vehicles.length===0 ? '<div class="empty">Ingen biler lagt til ennå.</div>' : `
+      <table>
+        <tr><th>Bil</th><th>Faste kostnader/mnd</th></tr>
+        ${DB.vehicles.map(v=>`<tr><td><span class="tag"><span class="color-dot" style="background:${v.color}"></span>${v.name}</span></td><td>${fmtKr(monthlyFixedCostsForVehicle(v.id))}</td></tr>`).join("")}
+        <tr><td><strong>Totalt per måned</strong></td><td><strong>${fmtKr(fixedTotal)}</strong></td></tr>
+      </table>`}
+    </div>
+
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <h2 style="margin:0;">Engangskostnader</h2>
+        <button class="btn btn-primary btn-sm" id="add-cost-btn">+ Ny kostnad</button>
+      </div>
+      <div class="cards" style="margin-bottom:14px;">
+        <div class="card"><div class="label">Totale engangskostnader registrert</div><div class="value" style="color:#f87171;">${fmtKr(totalAll)}</div></div>
+      </div>
+      ${sorted.length===0 ? '<div class="empty">Ingen kostnader registrert ennå.</div>' : `
+      <table>
+        <tr><th>Dato</th><th>Bil</th><th>Kategori</th><th>Beløp</th><th>Notater</th><th></th></tr>
+        ${sorted.map(k=>{
+          const v = vehicleById(k.vehicleId);
+          return `<tr>
+            <td>${fmtDate(k.date)}</td>
+            <td>${v?v.name:"(slettet bil)"}</td>
+            <td>${k.category}</td>
+            <td>${fmtKr(k.amount)}</td>
+            <td>${k.notes||"-"}</td>
+            <td class="row-actions">
+              <button class="btn btn-ghost btn-sm" data-edit-cost="${k.id}">Rediger</button>
+              <button class="btn btn-danger btn-sm" data-del-cost="${k.id}">Slett</button>
+            </td>
+          </tr>`;
+        }).join("")}
+      </table>`}
+    </div>
+  `;
+}
+
+/* ===================== VIEW HANDLERS ===================== */
+function attachViewHandlers(){
+  if(currentView==="dashboard"){
+    document.querySelectorAll("[data-edit-booking]").forEach(el=> el.onclick = ()=> openBookingModal(el.dataset.editBooking));
+  }
+  if(currentView==="calendar"){
+    document.getElementById("cal-prev").onclick = ()=>{ calMonth.setMonth(calMonth.getMonth()-1); render(); };
+    document.getElementById("cal-next").onclick = ()=>{ calMonth.setMonth(calMonth.getMonth()+1); render(); };
+    document.getElementById("cal-today").onclick = ()=>{ calMonth = new Date(); calMonth.setDate(1); render(); };
+    const filt = document.getElementById("cal-vehicle-filter");
+    filt.value = calVehicleFilter;
+    filt.onchange = (e)=>{ calVehicleFilter = e.target.value; render(); };
+    document.querySelectorAll("[data-booking]").forEach(el=>{
+      el.onclick = ()=> openReceipt(el.dataset.booking);
+    });
+  }
+  if(currentView==="bookings"){
+    document.querySelectorAll("[data-edit-booking]").forEach(el=> el.onclick = ()=> openBookingModal(el.dataset.editBooking));
+    document.querySelectorAll("[data-del-booking]").forEach(el=> el.onclick = ()=> {
+      if(confirm("Slette denne bookingen?")){
+        DB.bookings = DB.bookings.filter(b=>b.id!==el.dataset.delBooking);
+        saveData(); render(); showToast("Booking slettet.");
+      }
+    });
+    document.querySelectorAll("[data-receipt]").forEach(el=> el.onclick = ()=> openReceipt(el.dataset.receipt));
+    document.querySelectorAll("[data-contract]").forEach(el=> el.onclick = ()=> openContract(el.dataset.contract));
+  }
+  if(currentView==="vehicles"){
+    document.getElementById("add-vehicle-btn").onclick = ()=> openVehicleModal();
+    document.querySelectorAll("[data-edit-vehicle]").forEach(el=> el.onclick = ()=> openVehicleModal(el.dataset.editVehicle));
+    document.querySelectorAll("[data-fixedcosts-vehicle]").forEach(el=> el.onclick = ()=> openFixedCostModal(el.dataset.fixedcostsVehicle));
+    document.querySelectorAll("[data-del-vehicle]").forEach(el=> el.onclick = ()=> {
+      const hasBookings = DB.bookings.some(b=>b.vehicleId===el.dataset.delVehicle);
+      if(hasBookings && !confirm("Denne bilen har bookinger knyttet til seg. Slette likevel?")) return;
+      if(!hasBookings && !confirm("Slette denne bilen?")) return;
+      DB.vehicles = DB.vehicles.filter(v=>v.id!==el.dataset.delVehicle);
+      DB.fixedCosts = DB.fixedCosts.filter(f=>f.vehicleId!==el.dataset.delVehicle);
+      saveData(); render(); showToast("Bil slettet.");
+    });
+  }
+  if(currentView==="customers"){
+    document.getElementById("add-customer-btn").onclick = ()=> openCustomerModal();
+    document.querySelectorAll("[data-edit-customer]").forEach(el=> el.onclick = ()=> openCustomerModal(el.dataset.editCustomer));
+    document.querySelectorAll("[data-del-customer]").forEach(el=> el.onclick = ()=> {
+      if(confirm("Slette denne leietakeren?")){
+        DB.customers = DB.customers.filter(c=>c.id!==el.dataset.delCustomer);
+        saveData(); render(); showToast("Leietaker slettet.");
+      }
+    });
+  }
+  if(currentView==="costs"){
+    document.getElementById("add-cost-btn").onclick = ()=> openCostModal();
+    document.querySelectorAll("[data-edit-cost]").forEach(el=> el.onclick = ()=> openCostModal(el.dataset.editCost));
+    document.querySelectorAll("[data-del-cost]").forEach(el=> el.onclick = ()=> {
+      if(confirm("Slette denne kostnaden?")){
+        DB.costs = DB.costs.filter(k=>k.id!==el.dataset.delCost);
+        saveData(); render(); showToast("Kostnad slettet.");
+      }
+    });
+  }
+}
+
+/* ===================== BOOKING MODAL ===================== */
+function refreshBookingSelects(){
+  document.getElementById("b-vehicle").innerHTML = DB.vehicles.map(v=>`<option value="${v.id}">${v.name}</option>`).join("") || '<option value="">Ingen biler - legg til en bil først</option>';
+  document.getElementById("b-customer").innerHTML = DB.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join("") || '<option value="">Ingen leietakere ennå</option>';
+}
+
+function openBookingModal(bookingId){
+  refreshBookingSelects();
+  const overlay = document.getElementById("booking-modal-overlay");
+  document.getElementById("booking-id").value = bookingId || "";
+  if(bookingId){
+    const b = bookingById(bookingId);
+    document.getElementById("booking-modal-title").textContent = "Rediger booking";
+    document.getElementById("b-vehicle").value = b.vehicleId;
+    document.getElementById("b-customer").value = b.customerId;
+    document.getElementById("b-start").value = b.startDate;
+    document.getElementById("b-end").value = b.endDate;
+    document.getElementById("b-price").value = b.totalPrice;
+    document.getElementById("b-deposit").value = b.deposit;
+    document.getElementById("b-status").value = b.status;
+    document.getElementById("b-notes").value = b.notes||"";
+    document.getElementById("b-deposit-paid").checked = !!b.depositPaid;
+    document.getElementById("b-deposit-paid-date").value = b.depositPaidDate||"";
+    document.getElementById("b-deposit-returned").checked = !!b.depositReturned;
+    document.getElementById("b-deposit-returned-date").value = b.depositReturnedDate||"";
+    document.getElementById("b-deposit-returned-amount").value = b.depositReturnedAmount!==undefined ? b.depositReturnedAmount : "";
+    document.getElementById("b-deposit-notes").value = b.depositNotes||"";
+    document.getElementById("b-rent-paid").checked = !!b.rentPaid;
+    document.getElementById("b-km-start").value = b.kmStart!==undefined && b.kmStart!==null ? b.kmStart : "";
+    document.getElementById("b-km-end").value = b.kmEnd!==undefined && b.kmEnd!==null ? b.kmEnd : "";
+    document.getElementById("b-damage-notes").value = b.damageNotes||"";
+    currentDamageImages = Array.isArray(b.damageImages) ? b.damageImages.slice() : [];
+  } else {
+    document.getElementById("booking-modal-title").textContent = "Ny booking";
+    document.getElementById("b-start").value = toISO(new Date());
+    document.getElementById("b-end").value = addDays(toISO(new Date()), 1);
+    document.getElementById("b-price").value = "";
+    document.getElementById("b-deposit").value = "";
+    document.getElementById("b-status").value = "bekreftet";
+    document.getElementById("b-notes").value = "";
+    document.getElementById("b-deposit-paid").checked = false;
+    document.getElementById("b-deposit-paid-date").value = "";
+    document.getElementById("b-deposit-returned").checked = false;
+    document.getElementById("b-deposit-returned-date").value = "";
+    document.getElementById("b-deposit-returned-amount").value = "";
+    document.getElementById("b-deposit-notes").value = "";
+    document.getElementById("b-rent-paid").checked = false;
+    document.getElementById("b-km-start").value = "";
+    document.getElementById("b-km-end").value = "";
+    document.getElementById("b-damage-notes").value = "";
+    currentDamageImages = [];
+  }
+  document.getElementById("b-damage-files").value = "";
+  updateDamagePreview();
+  updateKmDriven();
+  updateDepositFieldVisibility();
+  updatePriceSuggestion();
+  overlay.classList.add("open");
+}
+let currentDamageImages = [];
+function updateKmDriven(){
+  const start = Number(document.getElementById("b-km-start").value);
+  const end = Number(document.getElementById("b-km-end").value);
+  const el = document.getElementById("b-km-driven");
+  if(document.getElementById("b-km-start").value && document.getElementById("b-km-end").value && end >= start){
+    el.textContent = (end - start) + " km kjørt i perioden.";
+  } else if(document.getElementById("b-km-start").value && document.getElementById("b-km-end").value && end < start){
+    el.textContent = "⚠️ Kilometerstand ved levering kan ikke være lavere enn ved henting.";
+  } else {
+    el.textContent = "";
+  }
+}
+document.getElementById("b-km-start").addEventListener("input", updateKmDriven);
+document.getElementById("b-km-end").addEventListener("input", updateKmDriven);
+function updateDamagePreview(){
+  const el = document.getElementById("b-damage-preview");
+  if(!currentDamageImages.length){ el.innerHTML = ""; return; }
+  el.innerHTML = currentDamageImages.map((img, i)=>`
+    <div style="position:relative;">
+      <img src="${img.dataUrl}" alt="${img.name}" style="width:80px; height:80px; object-fit:cover; border-radius:6px; border:1px solid var(--border);">
+      <button type="button" data-damage-remove="${i}" style="position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%; background:#ef4444; color:#fff; border:none; cursor:pointer; font-size:12px; line-height:1;">✕</button>
+    </div>
+  `).join("");
+  el.querySelectorAll("[data-damage-remove]").forEach(btn=>{
+    btn.onclick = ()=>{
+      currentDamageImages.splice(Number(btn.dataset.damageRemove), 1);
+      updateDamagePreview();
+    };
+  });
+}
+document.getElementById("b-damage-files").addEventListener("change", async (e)=>{
+  const files = Array.from(e.target.files || []);
+  for(const file of files){
+    try{
+      const resized = await resizeImageFile(file);
+      currentDamageImages.push(resized);
+    } catch(err){ console.error(err); }
+  }
+  updateDamagePreview();
+  e.target.value = "";
+});
+function updateDepositFieldVisibility(){
+  const paid = document.getElementById("b-deposit-paid").checked;
+  const returned = document.getElementById("b-deposit-returned").checked;
+  document.getElementById("b-deposit-paid-date-row").style.display = paid ? "block" : "none";
+  document.getElementById("b-deposit-returned-date-row").style.display = returned ? "block" : "none";
+  document.getElementById("b-deposit-returned-amount-row").style.display = returned ? "block" : "none";
+  document.getElementById("b-deposit-notes-row").style.display = returned ? "block" : "none";
+  if(paid && !document.getElementById("b-deposit-paid-date").value) document.getElementById("b-deposit-paid-date").value = toISO(new Date());
+  if(returned && !document.getElementById("b-deposit-returned-date").value){
+    document.getElementById("b-deposit-returned-date").value = toISO(new Date());
+    if(!document.getElementById("b-deposit-returned-amount").value) document.getElementById("b-deposit-returned-amount").value = document.getElementById("b-deposit").value || 0;
+  }
+}
+document.getElementById("b-deposit-paid").addEventListener("change", updateDepositFieldVisibility);
+document.getElementById("b-deposit-returned").addEventListener("change", updateDepositFieldVisibility);
+function closeBookingModal(){ document.getElementById("booking-modal-overlay").classList.remove("open"); }
+
+function updatePriceSuggestion(){
+  const vId = document.getElementById("b-vehicle").value;
+  const start = document.getElementById("b-start").value;
+  const end = document.getElementById("b-end").value;
+  const warnEl = document.getElementById("b-conflict-warning");
+  const breakdownEl = document.getElementById("b-price-breakdown");
+  const v = vehicleById(vId);
+  if(!v || !start || !end || end <= start){
+    breakdownEl.textContent = "Velg bil og gyldige datoer for prisforslag.";
+    warnEl.style.display = "none";
+    return;
+  }
+  const calc = calcPrice(v, start, end);
+  breakdownEl.innerHTML = `Forslag: <strong>${fmtKr(calc.total)}</strong> for ${calc.nights} natt(netter) — ${calc.breakdown}`;
+  if(!document.getElementById("b-price").value || document.getElementById("b-price").dataset.auto !== "false"){
+    document.getElementById("b-price").value = calc.total;
+    document.getElementById("b-price").dataset.auto = "true";
+  }
+  const editId = document.getElementById("booking-id").value;
+  const conflict = DB.bookings.some(b=>
+    b.id !== editId && b.vehicleId === vId && b.status !== "avlyst" &&
+    bookingsOverlap(start, end, b.startDate, b.endDate)
+  );
+  warnEl.style.display = conflict ? "block" : "none";
+}
+
+document.getElementById("b-vehicle").addEventListener("change", updatePriceSuggestion);
+document.getElementById("b-start").addEventListener("change", updatePriceSuggestion);
+document.getElementById("b-end").addEventListener("change", updatePriceSuggestion);
+document.getElementById("b-price").addEventListener("input", ()=>{ document.getElementById("b-price").dataset.auto = "false"; });
+
+document.getElementById("new-booking-btn").onclick = ()=> openBookingModal();
+document.getElementById("booking-cancel").onclick = closeBookingModal;
+document.getElementById("booking-save").onclick = ()=>{
+  const vId = document.getElementById("b-vehicle").value;
+  const cId = document.getElementById("b-customer").value;
+  const start = document.getElementById("b-start").value;
+  const end = document.getElementById("b-end").value;
+  if(!vId){ alert("Du må legge til en bil først (under 'Biler')."); return; }
+  if(!cId){ alert("Du må legge til en leietaker først (eller bruk 'legg til ny leietaker')."); return; }
+  if(!start || !end || end <= start){ alert("Returdato må være etter hentedato."); return; }
+
+  const id = document.getElementById("booking-id").value || uid();
+  const data = {
+    id, vehicleId: vId, customerId: cId, startDate: start, endDate: end,
+    totalPrice: Number(document.getElementById("b-price").value)||0,
+    deposit: Number(document.getElementById("b-deposit").value)||0,
+    status: document.getElementById("b-status").value,
+    notes: document.getElementById("b-notes").value,
+    depositPaid: document.getElementById("b-deposit-paid").checked,
+    depositPaidDate: document.getElementById("b-deposit-paid-date").value || "",
+    depositReturned: document.getElementById("b-deposit-returned").checked,
+    depositReturnedDate: document.getElementById("b-deposit-returned-date").value || "",
+    depositReturnedAmount: document.getElementById("b-deposit-returned-amount").value !== "" ? Number(document.getElementById("b-deposit-returned-amount").value) : undefined,
+    depositNotes: document.getElementById("b-deposit-notes").value,
+    rentPaid: document.getElementById("b-rent-paid").checked,
+    kmStart: document.getElementById("b-km-start").value !== "" ? Number(document.getElementById("b-km-start").value) : undefined,
+    kmEnd: document.getElementById("b-km-end").value !== "" ? Number(document.getElementById("b-km-end").value) : undefined,
+    damageNotes: document.getElementById("b-damage-notes").value,
+    damageImages: currentDamageImages.slice(),
+    createdAt: document.getElementById("booking-id").value ? bookingById(id).createdAt : new Date().toISOString()
+  };
+  const idx = DB.bookings.findIndex(b=>b.id===id);
+  if(idx>=0) DB.bookings[idx] = data; else DB.bookings.push(data);
+  saveData();
+  closeBookingModal();
+  render();
+  showToast("Booking lagret!");
+};
+document.getElementById("quick-add-customer").onclick = (e)=>{
+  e.preventDefault();
+  openCustomerModal(null, true);
+};
+
+/* ===================== VEHICLE MODAL ===================== */
+function openVehicleModal(vehicleId){
+  const overlay = document.getElementById("vehicle-modal-overlay");
+  document.getElementById("vehicle-id").value = vehicleId || "";
+  if(vehicleId){
+    const v = vehicleById(vehicleId);
+    document.getElementById("vehicle-modal-title").textContent = "Rediger bil";
+    document.getElementById("v-name").value = v.name;
+    document.getElementById("v-regnr").value = v.regnr||"";
+    document.getElementById("v-daily").value = v.dailyRate||"";
+    document.getElementById("v-weekend").value = v.weekendRate||"";
+    document.getElementById("v-highseason").value = v.highSeasonRate||"";
+    document.getElementById("v-color").value = v.color||"#3b82f6";
+    document.getElementById("v-hs-start").value = v.hsStart||"";
+    document.getElementById("v-hs-end").value = v.hsEnd||"";
+    document.getElementById("v-notes").value = v.notes||"";
+  } else {
+    document.getElementById("vehicle-modal-title").textContent = "Ny bil";
+    ["v-name","v-regnr","v-daily","v-weekend","v-highseason","v-hs-start","v-hs-end","v-notes"].forEach(id=>document.getElementById(id).value="");
+    document.getElementById("v-color").value = "#3b82f6";
+  }
+  overlay.classList.add("open");
+}
+function closeVehicleModal(){ document.getElementById("vehicle-modal-overlay").classList.remove("open"); }
+document.getElementById("vehicle-cancel").onclick = closeVehicleModal;
+document.getElementById("vehicle-save").onclick = ()=>{
+  const name = document.getElementById("v-name").value.trim();
+  if(!name){ alert("Bilen må ha et navn."); return; }
+  const id = document.getElementById("vehicle-id").value || uid();
+  const data = {
+    id, name,
+    regnr: document.getElementById("v-regnr").value.trim(),
+    dailyRate: Number(document.getElementById("v-daily").value)||0,
+    weekendRate: Number(document.getElementById("v-weekend").value)||0,
+    highSeasonRate: Number(document.getElementById("v-highseason").value)||0,
+    color: document.getElementById("v-color").value,
+    hsStart: document.getElementById("v-hs-start").value.trim(),
+    hsEnd: document.getElementById("v-hs-end").value.trim(),
+    notes: document.getElementById("v-notes").value.trim()
+  };
+  const idx = DB.vehicles.findIndex(v=>v.id===id);
+  if(idx>=0) DB.vehicles[idx]=data; else DB.vehicles.push(data);
+  saveData();
+  closeVehicleModal();
+  render();
+  showToast("Bil lagret!");
+};
+
+/* ===================== FIXED COST MODAL ===================== */
+function openFixedCostModal(vehicleId){
+  document.getElementById("fixedcost-vehicle-id").value = vehicleId;
+  const v = vehicleById(vehicleId);
+  document.getElementById("fixedcost-modal-title").textContent = "Faste kostnader – " + (v?v.name:"");
+  document.getElementById("fc-amount").value = "";
+  document.getElementById("fc-active").checked = true;
+  renderFixedCostList(vehicleId);
+  document.getElementById("fixedcost-modal-overlay").classList.add("open");
+}
+function renderFixedCostList(vehicleId){
+  const items = DB.fixedCosts.filter(f=>f.vehicleId===vehicleId);
+  const listEl = document.getElementById("fixedcost-list");
+  if(items.length===0){
+    listEl.innerHTML = '<div class="empty">Ingen faste kostnader lagt til for denne bilen ennå.</div>';
+    return;
+  }
+  listEl.innerHTML = `
+    <table>
+      <tr><th>Type</th><th>Kr/mnd</th><th>Status</th><th></th></tr>
+      ${items.map(f=>`
+        <tr>
+          <td>${f.category}</td>
+          <td>${fmtKr(f.amountPerMonth)}</td>
+          <td>${f.active!==false ? '<span class="pill pill-ok">Aktiv</span>' : '<span class="pill" style="background:rgba(148,163,184,.15); color:#94a3b8;">Inaktiv</span>'}</td>
+          <td class="row-actions">
+            <button class="btn btn-ghost btn-sm" data-fc-toggle="${f.id}">${f.active!==false?'Deaktiver':'Aktiver'}</button>
+            <button class="btn btn-danger btn-sm" data-fc-del="${f.id}">Slett</button>
+          </td>
+        </tr>
+      `).join("")}
+    </table>`;
+  listEl.querySelectorAll("[data-fc-toggle]").forEach(el=> el.onclick = ()=>{
+    const f = DB.fixedCosts.find(x=>x.id===el.dataset.fcToggle);
+    f.active = f.active===false ? true : false;
+    saveData();
+    renderFixedCostList(vehicleId);
+  });
+  listEl.querySelectorAll("[data-fc-del]").forEach(el=> el.onclick = ()=>{
+    if(confirm("Slette denne faste kostnaden?")){
+      DB.fixedCosts = DB.fixedCosts.filter(x=>x.id!==el.dataset.fcDel);
+      saveData();
+      renderFixedCostList(vehicleId);
+    }
+  });
+}
+document.getElementById("fixedcost-add").onclick = ()=>{
+  const vehicleId = document.getElementById("fixedcost-vehicle-id").value;
+  const amount = Number(document.getElementById("fc-amount").value)||0;
+  if(amount<=0){ alert("Skriv inn et beløp større enn 0."); return; }
+  DB.fixedCosts.push({
+    id: uid(), vehicleId,
+    category: document.getElementById("fc-category").value,
+    amountPerMonth: amount,
+    active: document.getElementById("fc-active").checked
+  });
+  saveData();
+  document.getElementById("fc-amount").value = "";
+  renderFixedCostList(vehicleId);
+  showToast("Fast kostnad lagt til!");
+};
+document.getElementById("fixedcost-close").onclick = ()=>{
+  document.getElementById("fixedcost-modal-overlay").classList.remove("open");
+  if(currentView==="vehicles" || currentView==="costs" || currentView==="dashboard") render();
+};
+
+/* ===================== CUSTOMER MODAL ===================== */
+let _customerFromBooking = false;
+function openCustomerModal(customerId, fromBooking){
+  _customerFromBooking = !!fromBooking;
+  const overlay = document.getElementById("customer-modal-overlay");
+  document.getElementById("customer-id").value = customerId || "";
+  if(customerId){
+    const c = customerById(customerId);
+    document.getElementById("customer-modal-title").textContent = "Rediger leietaker";
+    document.getElementById("c-name").value = c.name;
+    document.getElementById("c-phone").value = c.phone||"";
+    document.getElementById("c-email").value = c.email||"";
+    document.getElementById("c-notes").value = c.notes||"";
+  } else {
+    document.getElementById("customer-modal-title").textContent = "Ny leietaker";
+    ["c-name","c-phone","c-email","c-notes"].forEach(id=>document.getElementById(id).value="");
+  }
+  overlay.classList.add("open");
+}
+function closeCustomerModal(){ document.getElementById("customer-modal-overlay").classList.remove("open"); }
+document.getElementById("customer-cancel").onclick = closeCustomerModal;
+document.getElementById("customer-save").onclick = ()=>{
+  const name = document.getElementById("c-name").value.trim();
+  if(!name){ alert("Leietakeren må ha et navn."); return; }
+  const id = document.getElementById("customer-id").value || uid();
+  const data = {
+    id, name,
+    phone: document.getElementById("c-phone").value.trim(),
+    email: document.getElementById("c-email").value.trim(),
+    notes: document.getElementById("c-notes").value.trim()
+  };
+  const idx = DB.customers.findIndex(c=>c.id===id);
+  if(idx>=0) DB.customers[idx]=data; else DB.customers.push(data);
+  saveData();
+  closeCustomerModal();
+  if(_customerFromBooking){
+    refreshBookingSelects();
+    document.getElementById("b-customer").value = id;
+  }
+  if(currentView==="customers") render();
+  showToast("Leietaker lagret!");
+};
+
+/* ===================== COST MODAL ===================== */
+function refreshCostVehicleSelect(){
+  document.getElementById("k-vehicle").innerHTML = DB.vehicles.map(v=>`<option value="${v.id}">${v.name}</option>`).join("") || '<option value="">Ingen biler ennå</option>';
+}
+function openCostModal(costId){
+  refreshCostVehicleSelect();
+  const overlay = document.getElementById("cost-modal-overlay");
+  document.getElementById("cost-id").value = costId || "";
+  if(costId){
+    const k = DB.costs.find(c=>c.id===costId);
+    document.getElementById("cost-modal-title").textContent = "Rediger kostnad";
+    document.getElementById("k-vehicle").value = k.vehicleId;
+    document.getElementById("k-date").value = k.date;
+    document.getElementById("k-category").value = k.category;
+    document.getElementById("k-amount").value = k.amount;
+    document.getElementById("k-notes").value = k.notes||"";
+  } else {
+    document.getElementById("cost-modal-title").textContent = "Ny kostnad";
+    document.getElementById("k-date").value = toISO(new Date());
+    document.getElementById("k-amount").value = "";
+    document.getElementById("k-notes").value = "";
+  }
+  overlay.classList.add("open");
+}
+function closeCostModal(){ document.getElementById("cost-modal-overlay").classList.remove("open"); }
+document.getElementById("cost-cancel").onclick = closeCostModal;
+document.getElementById("cost-save").onclick = ()=>{
+  const vId = document.getElementById("k-vehicle").value;
+  if(!vId){ alert("Du må legge til en bil først."); return; }
+  const id = document.getElementById("cost-id").value || uid();
+  const data = {
+    id, vehicleId: vId,
+    date: document.getElementById("k-date").value,
+    category: document.getElementById("k-category").value,
+    amount: Number(document.getElementById("k-amount").value)||0,
+    notes: document.getElementById("k-notes").value.trim()
+  };
+  const idx = DB.costs.findIndex(c=>c.id===id);
+  if(idx>=0) DB.costs[idx]=data; else DB.costs.push(data);
+  saveData();
+  closeCostModal();
+  render();
+  showToast("Kostnad lagret!");
+};
+
+/* ===================== RECEIPT ===================== */
+function calcKmSettlement(b, nights, settings){
+  const s = settings || {};
+  const perDay = Number(s.includedKmPerDay!==undefined ? s.includedKmPerDay : 200);
+  const price = Number(s.kmPricePerExcess!==undefined ? s.kmPricePerExcess : 3.5);
+  const hasReadings = b.kmStart!==undefined && b.kmStart!==null && b.kmStart!=="" && b.kmEnd!==undefined && b.kmEnd!==null && b.kmEnd!=="";
+  const driven = hasReadings ? Math.max(0, Number(b.kmEnd) - Number(b.kmStart)) : null;
+  const included = Math.max(1, nights) * perDay;
+  const excess = driven!==null ? Math.max(0, driven - included) : null;
+  const cost = excess!==null ? Math.round(excess * price) : null;
+  return { hasReadings, driven, included, excess, cost, perDay, price };
+}
+function openReceipt(bookingId){
+  const b = bookingById(bookingId);
+  if(!b) return;
+  const v = vehicleById(b.vehicleId), c = customerById(b.customerId);
+  const calc = v ? calcPrice(v, b.startDate, b.endDate) : { nights: nightsBetween(b.startDate,b.endDate), breakdown: "" };
+  const totalDue = Number(b.totalPrice||0) + Number(b.deposit||0);
+  const s = DB.settings || {};
+  const km = calcKmSettlement(b, calc.nights, s);
+  document.getElementById("receipt-content").innerHTML = `
+    <h2>Kvittering / fakturaforslag</h2>
+    <p><strong>Utleier:</strong> ${s.name?s.name:"Bobil Booking"}</p>
+    <p><strong>Dato utskrevet:</strong> ${fmtDate(toISO(new Date()))}</p>
+    <hr>
+    <p><strong>Leietaker:</strong> ${c?c.name:"-"}<br>
+    ${c&&c.phone?("Tlf: "+c.phone+"<br>"):""}${c&&c.email?("E-post: "+c.email+"<br>"):""}</p>
+    <p><strong>Bil:</strong> ${v?v.name:"-"} ${v&&v.regnr?("("+v.regnr+")"):""}</p>
+    <p><strong>Periode:</strong> ${fmtDate(b.startDate)} – ${fmtDate(b.endDate)} (${calc.nights} netter)</p>
+    <p><strong>Prisberegning:</strong> ${calc.breakdown}</p>
+    <table style="width:100%; margin-top:10px;">
+      <tr><td>Leiebeløp</td><td style="text-align:right;">${fmtKr(b.totalPrice)}</td></tr>
+      <tr><td>Depositum (refunderes ved uskadet retur)</td><td style="text-align:right;">${fmtKr(b.deposit)}</td></tr>
+      <tr><td>Totalt å betale ved henting</td><td style="text-align:right;"><strong>${fmtKr(totalDue)}</strong></td></tr>
+    </table>
+    <p style="margin-top:10px;">
+      <strong>Leie betalt:</strong> ${b.rentPaid?"Ja":"Nei"}<br>
+      <strong>Depositum innbetalt:</strong> ${b.depositPaid?("Ja"+(b.depositPaidDate?(" ("+fmtDate(b.depositPaidDate)+")"):"")):"Nei"}<br>
+      <strong>Depositum returnert:</strong> ${b.depositReturned?("Ja"+(b.depositReturnedDate?(" ("+fmtDate(b.depositReturnedDate)+")"):"")+(b.depositReturnedAmount!==undefined?(", "+fmtKr(b.depositReturnedAmount)):"")):"Nei"}
+      ${b.depositNotes?("<br><strong>Notat depositum:</strong> "+b.depositNotes):""}
+    </p>
+    <div style="margin-top:10px; padding:10px; background:#f3f4f6; border-radius:6px;">
+      <strong>Kilometeroppgjør</strong><br>
+      ${km.hasReadings ? `
+        Km ved henting: ${b.kmStart}<br>
+        Km ved levering: ${b.kmEnd}<br>
+        Kjørt: ${km.driven} km<br>
+        Inkludert i leien: ${km.included} km (${km.perDay} km/dag × ${Math.max(1,calc.nights)} dager)<br>
+        ${km.excess > 0
+          ? `<strong style="color:#b91c1c;">Overkjørt: ${km.excess} km × ${km.price.toLocaleString("nb-NO")} kr/km = ${fmtKr(km.cost)} trekkes fra depositum</strong>`
+          : `Ingen overkjøring – innenfor fri kjørelengde.`}
+      ` : `Km-stand ikke registrert enda.`}
+    </div>
+    ${b.damageNotes?`<p style="margin-top:10px;"><strong>Skaderapport ved retur:</strong> ${b.damageNotes}</p>`:""}
+    ${b.notes?`<p style="margin-top:14px;"><strong>Notater:</strong> ${b.notes}</p>`:""}
+    <p style="margin-top:20px; color:#666; font-size:12px;">Status: ${b.status}</p>
+  `;
+  document.getElementById("receipt-modal-overlay").classList.add("open");
+}
+document.getElementById("receipt-close").onclick = ()=> document.getElementById("receipt-modal-overlay").classList.remove("open");
+document.getElementById("receipt-print").onclick = ()=> window.print();
+
+/* ===================== SETTINGS (UTLEIER) ===================== */
+document.getElementById("settings-btn").onclick = ()=>{
+  const s = DB.settings || {};
+  document.getElementById("s-name").value = s.name||"";
+  document.getElementById("s-address").value = s.address||"";
+  document.getElementById("s-orgnr").value = s.orgnr||"";
+  document.getElementById("s-phone").value = s.phone||"";
+  document.getElementById("s-email").value = s.email||"";
+  document.getElementById("s-bank").value = s.bank||"";
+  document.getElementById("s-included-km").value = s.includedKmPerDay!==undefined ? s.includedKmPerDay : 200;
+  document.getElementById("s-km-price").value = s.kmPricePerExcess!==undefined ? s.kmPricePerExcess : 3.5;
+  document.getElementById("s-cleaning-fee").value = s.cleaningFee!==undefined ? s.cleaningFee : 500;
+  document.getElementById("s-toilet-fee").value = s.toiletFee!==undefined ? s.toiletFee : 500;
+  document.getElementById("settings-modal-overlay").classList.add("open");
+};
+document.getElementById("settings-cancel").onclick = ()=> document.getElementById("settings-modal-overlay").classList.remove("open");
+document.getElementById("settings-save").onclick = ()=>{
+  DB.settings = {
+    name: document.getElementById("s-name").value.trim(),
+    address: document.getElementById("s-address").value.trim(),
+    orgnr: document.getElementById("s-orgnr").value.trim(),
+    phone: document.getElementById("s-phone").value.trim(),
+    email: document.getElementById("s-email").value.trim(),
+    bank: document.getElementById("s-bank").value.trim(),
+    includedKmPerDay: Number(document.getElementById("s-included-km").value)||200,
+    kmPricePerExcess: Number(document.getElementById("s-km-price").value)||3.5,
+    cleaningFee: Number(document.getElementById("s-cleaning-fee").value)||500,
+    toiletFee: Number(document.getElementById("s-toilet-fee").value)||500
+  };
+  saveData();
+  document.getElementById("settings-modal-overlay").classList.remove("open");
+  showToast("Info lagret!");
+};
+
+/* ===================== LEIEKONTRAKT ===================== */
+function openContract(bookingId){
+  const b = bookingById(bookingId);
+  if(!b) return;
+  const v = vehicleById(b.vehicleId), c = customerById(b.customerId);
+  const calc = v ? calcPrice(v, b.startDate, b.endDate) : { nights: nightsBetween(b.startDate,b.endDate), breakdown: "" };
+  const totalDue = Number(b.totalPrice||0) + Number(b.deposit||0);
+  const s = DB.settings || {};
+  document.getElementById("contract-content").innerHTML = `
+    <h2>Leiekontrakt – bobil</h2>
+    <p style="color:#666; font-size:12px;">Utskrevet: ${fmtDate(toISO(new Date()))}</p>
+    <hr>
+    <p><strong>1. Parter</strong></p>
+    <p>
+      <strong>Utleier:</strong> ${s.name||"(ikke oppgitt – fyll ut under 'Min info')"}<br>
+      ${s.address?("Adresse: "+s.address+"<br>"):""}${s.orgnr?("Org.nr: "+s.orgnr+"<br>"):""}${s.phone?("Tlf: "+s.phone+"<br>"):""}${s.email?("E-post: "+s.email+"<br>"):""}${s.bank?("Kontonr: "+s.bank):""}
+    </p>
+    <p>
+      <strong>Leietaker:</strong> ${c?c.name:"-"}<br>
+      ${c&&c.phone?("Tlf: "+c.phone+"<br>"):""}${c&&c.email?("E-post: "+c.email):""}
+    </p>
+    <p><strong>2. Kjøretøy</strong></p>
+    <p>${v?v.name:"-"} ${v&&v.regnr?("– Reg.nr: "+v.regnr):""}</p>
+    <p><strong>3. Utleieperiode</strong></p>
+    <p>Henting: ${fmtDate(b.startDate)}<br>Levering: ${fmtDate(b.endDate)}<br>Antall netter: ${calc.nights}</p>
+    <p><strong>4. Pris og betaling</strong></p>
+    <p>${calc.breakdown||""}</p>
+    <table style="width:100%; margin-top:6px;">
+      <tr><td>Leiebeløp</td><td style="text-align:right;">${fmtKr(b.totalPrice)}</td></tr>
+      <tr><td>Depositum (refunderes ved uskadet retur)</td><td style="text-align:right;">${fmtKr(b.deposit)}</td></tr>
+      <tr><td>Totalt å betale ved henting</td><td style="text-align:right;"><strong>${fmtKr(totalDue)}</strong></td></tr>
+    </table>
+    <p style="margin-top:8px; font-size:13px;">Depositum betales tilbake til leietaker innen 1 uke etter tilbakelevering, forutsatt at det ikke avdekkes skjulte skader eller andre forhold som nevnt under, og forutsatt at bilen er levert uskadet, ren og med fullt drivstoff/gass-/strømnivå som ved henting. Eventuelle skader, mangler, overkjørt kilometerstand, manglende rengjøring/tømming eller ekstra kostnader (se pkt. 5–7) kan trekkes fra depositum.</p>
+    <p><strong>5. Kilometerstand og fri kjørelengde</strong></p>
+    <p style="font-size:13px;">Det er inkludert ${Number(s.includedKmPerDay!==undefined?s.includedKmPerDay:200)} km kjøring pr. dag, akkumulert for hele leieperioden. Km-stand registreres ved henting og levering. Overskytende kjørelengde faktureres med ${Number(s.kmPricePerExcess!==undefined?s.kmPricePerExcess:3.5).toLocaleString("nb-NO")} kr pr. km over, og avregnes mot depositum ved levering.</p>
+    <p><strong>6. Rengjøring og tømming</strong></p>
+    <p style="font-size:13px;">Bilen skal leveres tilbake rengjort innvendig, samt med tomt toalett, vanntank og gråvannstank (spillvann). Dersom dette ikke er utført ved levering, påløper følgende gebyrer som trekkes fra depositum:</p>
+    <table style="width:100%; margin-top:4px;">
+      <tr><td>Innvendig vask (hvis ikke utført)</td><td style="text-align:right;">${fmtKr(s.cleaningFee!==undefined?s.cleaningFee:500)}</td></tr>
+      <tr><td>Tømming toalett/vanntank/gråvann (hvis ikke utført)</td><td style="text-align:right;">${fmtKr(s.toiletFee!==undefined?s.toiletFee:500)}</td></tr>
+    </table>
+    <p><strong>7. Bompasseringer, ferge og bøter</strong></p>
+    <p style="font-size:13px;">Bompasseringer, fergebilletter, parkeringsbøter og andre avgifter/bøter knyttet til leieperioden er leietakers ansvar. Disse vil bli etterfakturert leietaker eller trukket fra depositum, etter utleiers valg.</p>
+    <p><strong>8. Øvrige vilkår</strong></p>
+    <p style="font-size:13px;">Leietaker er ansvarlig for kjøretøyet i hele leieperioden, herunder skader, bøter og forsikringsansvar utover ordinær vilkår. Kjøretøyet skal behandles forsvarlig og kun benyttes til normal bruk. Ved spørsmål om forsikring/egenandel, kontakt utleier.</p>
+    ${b.notes?`<p><strong>Notater:</strong> ${b.notes}</p>`:""}
+    <p style="margin-top:24px;"><strong>9. Signaturer</strong></p>
+    <table style="width:100%; margin-top:30px;">
+      <tr>
+        <td style="width:50%; border-top:1px solid #333; padding-top:4px; font-size:12px;">Sted/dato, utleier</td>
+        <td style="width:50%; border-top:1px solid #333; padding-top:4px; font-size:12px;">Sted/dato, leietaker</td>
+      </tr>
+    </table>
+    <table style="width:100%; margin-top:36px;">
+      <tr>
+        <td style="width:50%; border-top:1px solid #333; padding-top:4px; font-size:12px;">Underskrift utleier</td>
+        <td style="width:50%; border-top:1px solid #333; padding-top:4px; font-size:12px;">Underskrift leietaker</td>
+      </tr>
+    </table>
+  `;
+  document.getElementById("contract-modal-overlay").classList.add("open");
+}
+document.getElementById("contract-close").onclick = ()=> document.getElementById("contract-modal-overlay").classList.remove("open");
+document.getElementById("contract-print").onclick = ()=> window.print();
+
+/* ===================== EXPORT / IMPORT ===================== */
+document.getElementById("export-btn").onclick = ()=>{
+  const blob = new Blob([JSON.stringify(DB, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "bobil_booking_backup_" + toISO(new Date()) + ".json";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("Data eksportert!");
+};
+document.getElementById("import-btn").onclick = ()=> document.getElementById("import-file").click();
+document.getElementById("import-file").addEventListener("change", (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    try{
+      const parsed = JSON.parse(ev.target.result);
+      if(!parsed.vehicles || !parsed.bookings){ alert("Ugyldig backup-fil."); return; }
+      if(confirm("Dette vil overskrive nåværende data med innholdet i filen. Fortsette?")){
+        DB = parsed;
+        saveData();
+        render();
+        showToast("Data importert!");
+      }
+    } catch(err){
+      alert("Kunne ikke lese filen: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+/* close modals on overlay click */
+document.querySelectorAll(".modal-overlay").forEach(ov=>{
+  ov.addEventListener("click", (e)=>{ if(e.target===ov) ov.classList.remove("open"); });
+});
+
+/* ===================== AUTH / INIT ===================== */
+function showApp(){
+  document.getElementById("login-overlay").style.display = "none";
+  document.getElementById("app-root").style.display = "";
+  render();
+}
+function showLogin(message){
+  document.getElementById("login-overlay").style.display = "flex";
+  document.getElementById("app-root").style.display = "none";
+  if(message) document.getElementById("login-status").textContent = message;
+}
+async function doLogin(){
+  const password = document.getElementById("login-password").value;
+  const errEl = document.getElementById("login-error");
+  errEl.style.display = "none";
+  if(!password){ errEl.textContent = "Skriv inn passordet."; errEl.style.display = "block"; return; }
+  if(!cloudEnabled){
+    errEl.textContent = "Sky-lagring er ikke satt opp i denne filen (mangler Supabase-nøkler). Appen kjører lokalt uten innlogging.";
+    errEl.style.display = "block";
+    return;
+  }
+  document.getElementById("login-btn").disabled = true;
+  document.getElementById("login-status").textContent = "Logger inn …";
+  try{
+    const { error } = await supabaseClient.auth.signInWithPassword({ email: AUTH_EMAIL, password });
+    if(error){
+      errEl.textContent = "Feil passord, eller bruker ikke satt opp i Supabase ennå.";
+      errEl.style.display = "block";
+      document.getElementById("login-status").textContent = "";
+      document.getElementById("login-btn").disabled = false;
+      return;
+    }
+    document.getElementById("login-status").textContent = "Henter data …";
+    await pullFromCloud();
+    showApp();
+  } catch(e){
+    console.error(e);
+    errEl.textContent = "Kunne ikke koble til. Sjekk internettforbindelsen.";
+    errEl.style.display = "block";
+    document.getElementById("login-status").textContent = "";
+  }
+  document.getElementById("login-btn").disabled = false;
+}
+document.getElementById("login-btn").onclick = doLogin;
+document.getElementById("login-password").addEventListener("keydown", (e)=>{ if(e.key==="Enter") doLogin(); });
+document.getElementById("logout-btn").onclick = async ()=>{
+  if(cloudEnabled) await supabaseClient.auth.signOut();
+  document.getElementById("login-password").value = "";
+  showLogin("");
+};
+
+(async function init(){
+  if(!cloudEnabled){
+    /* Ingen Supabase satt opp - kjør appen lokalt uten innloggingskrav, som før. */
+    document.getElementById("logout-btn").style.display = "none";
+    showApp();
+    return;
+  }
+  showLogin("Sjekker innlogging …");
+  const { data } = await supabaseClient.auth.getSession();
+  if(data && data.session){
+    document.getElementById("login-status").textContent = "Henter data …";
+    await pullFromCloud();
+    showApp();
+  } else {
+    showLogin("");
+  }
+})();
+</script>
+</body>
+</html>
