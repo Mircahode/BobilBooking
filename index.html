@@ -154,6 +154,7 @@
     <button class="nav-btn" data-view="vehicles">🚙 Biler</button>
     <button class="nav-btn" data-view="customers">👤 Leietakere</button>
     <button class="nav-btn" data-view="costs">💸 Kostnader</button>
+    <button class="nav-btn" data-view="requests" style="margin-top:10px;border-top:1px solid var(--border);padding-top:16px">📩 Forespørsler <span id="req-badge" style="display:none;background:#ef4444;color:#fff;border-radius:9px;padding:1px 7px;font-size:11px;margin-left:4px;vertical-align:middle"></span></button>
   </div>
 
   <div class="main">
@@ -559,8 +560,8 @@
 <script>
 /* ===================== CLOUD SYNC CONFIG ===================== */
 /* Fyll inn disse to verdiene fra ditt Supabase-prosjekt (Project Settings > API). */
-const SUPABASE_URL = "https://kydkjszbgdgvvkiicftg.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_maTxWGDwgcVBnpaCLNKGFA_UmrrPGLx";
+const SUPABASE_URL = "YOUR_SUPABASE_URL";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
 /* Dette er e-postadressen knyttet til Supabase Auth-brukeren du oppretter (kun brukt internt, ikke synlig for andre). */
 const AUTH_EMAIL = "steffen.skaar@gmail.com";
 
@@ -629,9 +630,47 @@ async function pushToCloud(){
     }, { onConflict: "user_id" });
     if(error) throw error;
     setSyncStatus("☁️ Lagret i skyen");
+    syncPublicData(); // Oppdater offentlig bestillingsside (fire-and-forget)
   } catch(e){
     console.error(e);
     setSyncStatus("⚠️ Kunne ikke lagre i skyen (lagret lokalt)");
+  }
+}
+
+async function syncPublicData(){
+  if(!cloudEnabled) return;
+  try{
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    if(!sessionData || !sessionData.session) return;
+    // Sync kjøretøyinfo
+    if(DB.vehicles.length > 0){
+      await supabaseClient.from("public_vehicles").upsert(
+        DB.vehicles.map(v=>({
+          id: v.id, name: v.name, regnr: v.regnr||"",
+          daily_rate: v.dailyRate||0, weekend_rate: v.weekendRate||0,
+          high_season_rate: v.highSeasonRate||0,
+          hs_start: v.hsStart||"", hs_end: v.hsEnd||"",
+          color: v.color||"#3b82f6", notes: v.notes||""
+        }))
+      );
+    }
+    // Slett kjøretøy som er fjernet fra admin
+    const vehicleIds = DB.vehicles.map(v=>v.id);
+    if(vehicleIds.length > 0){
+      await supabaseClient.from("public_vehicles").delete().not("id","in","("+vehicleIds.map(id=>`"${id}"`).join(",")+")");
+    } else {
+      await supabaseClient.from("public_vehicles").delete().neq("id","__never__");
+    }
+    // Erstatt alle offentlige bookinger (slett + sett inn)
+    await supabaseClient.from("public_bookings").delete().neq("id","__never__");
+    const activeBookings = DB.bookings.filter(b=>b.status!=="avlyst");
+    if(activeBookings.length > 0){
+      await supabaseClient.from("public_bookings").insert(
+        activeBookings.map(b=>({ id: b.id, vehicle_id: b.vehicleId, start_date: b.startDate, end_date: b.endDate }))
+      );
+    }
+  } catch(e){
+    console.error("syncPublicData feilet:", e);
   }
 }
 
@@ -778,7 +817,8 @@ function showToast(msg){
 /* ===================== NAVIGATION ===================== */
 const titles = {
   dashboard: "Dashbord", calendar: "Kalender", bookings: "Bookinger",
-  vehicles: "Biler", customers: "Leietakere", costs: "Kostnader"
+  vehicles: "Biler", customers: "Leietakere", costs: "Kostnader",
+  requests: "Forespørsler"
 };
 let currentView = "dashboard";
 let calMonth = new Date(); calMonth.setDate(1);
@@ -802,6 +842,7 @@ function render(){
   else if(currentView === "vehicles") c.innerHTML = renderVehicles();
   else if(currentView === "customers") c.innerHTML = renderCustomers();
   else if(currentView === "costs") c.innerHTML = renderCosts();
+  else if(currentView === "requests"){ renderRequestsView(); return; }
   attachViewHandlers();
 }
 
@@ -1134,6 +1175,152 @@ function renderCosts(){
       </table>`}
     </div>
   `;
+}
+
+/* ===================== FORESPØRSLER ===================== */
+function renderRequestsView(){
+  const c = document.getElementById("content");
+  if(!cloudEnabled){
+    c.innerHTML = `<div class="panel"><p style="color:var(--muted);padding:10px">Sky-lagring er ikke aktivert — forespørsler krever Supabase-tilkobling.</p></div>`;
+    return;
+  }
+  c.innerHTML = `<div class="panel"><p style="color:var(--muted)">Laster forespørsler…</p></div>`;
+  loadAndRenderRequests();
+}
+
+async function loadAndRenderRequests(){
+  if(!cloudEnabled) return;
+  try{
+    const { data, error } = await supabaseClient.from("booking_requests")
+      .select("*").order("created_at", {ascending: false});
+    if(error) throw error;
+    const reqs = data || [];
+    // Oppdater badge-teller
+    const pendingCount = reqs.filter(r=>r.status==="pending").length;
+    const badge = document.getElementById("req-badge");
+    if(badge){ badge.textContent = pendingCount; badge.style.display = pendingCount ? "" : "none"; }
+    // Render
+    document.getElementById("content").innerHTML = buildRequestsHTML(reqs);
+    attachRequestHandlers();
+  } catch(e){
+    document.getElementById("content").innerHTML =
+      `<div class="panel"><p style="color:var(--danger)">Kunne ikke laste forespørsler: ${e.message||e}</p></div>`;
+  }
+}
+
+function buildRequestsHTML(reqs){
+  if(reqs.length === 0) return `<div class="panel"><p style="color:var(--muted);text-align:center;padding:24px">Ingen forespørsler ennå. Når kunder sender forespørsler via bestillingssiden vises de her.</p></div>`;
+  const pending = reqs.filter(r=>r.status==="pending");
+  const handled = reqs.filter(r=>r.status!=="pending");
+  let html = "";
+  if(pending.length){
+    html += `<div class="panel">
+      <h2>⏳ Ventende forespørsler (${pending.length})</h2>
+      <table>
+        <thead><tr>
+          <th>Bil</th><th>Kunde</th><th>Periode</th>
+          <th>Kontakt</th><th>Melding</th><th>Mottatt</th><th>Handling</th>
+        </tr></thead>
+        <tbody>${pending.map(r=>requestRowHTML(r, true)).join("")}</tbody>
+      </table></div>`;
+  }
+  if(handled.length){
+    html += `<div class="panel" style="margin-top:20px">
+      <h2>Behandlede forespørsler</h2>
+      <table>
+        <thead><tr><th>Bil</th><th>Kunde</th><th>Periode</th><th>Status</th><th>Mottatt</th></tr></thead>
+        <tbody>${handled.map(r=>requestRowHTML(r, false)).join("")}</tbody>
+      </table></div>`;
+  }
+  return html;
+}
+
+function requestRowHTML(r, showActions){
+  const created = new Date(r.created_at).toLocaleDateString("nb-NO",{day:"2-digit",month:"2-digit",year:"numeric"});
+  if(showActions){
+    return `<tr>
+      <td>${r.vehicle_name||"-"}</td>
+      <td><strong>${r.customer_name}</strong></td>
+      <td style="white-space:nowrap">${fmtDate(r.start_date)} – ${fmtDate(r.end_date)}</td>
+      <td><a href="mailto:${r.customer_email}" style="color:var(--accent2)">${r.customer_email}</a>${r.customer_phone?`<br><small style="color:var(--muted)">${r.customer_phone}</small>`:""}</td>
+      <td style="max-width:160px;white-space:normal;font-size:12px">${r.message||"—"}</td>
+      <td style="white-space:nowrap">${created}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-success btn-sm" style="display:block;margin-bottom:5px"
+          data-req-approve="${r.id}"
+          data-req-vid="${r.vehicle_id}"
+          data-req-vname="${r.vehicle_name||""}"
+          data-req-name="${r.customer_name}"
+          data-req-email="${r.customer_email}"
+          data-req-phone="${r.customer_phone||""}"
+          data-req-start="${r.start_date}"
+          data-req-end="${r.end_date}">✅ Godkjenn</button>
+        <button class="btn btn-danger btn-sm" data-req-reject="${r.id}">✗ Avslå</button>
+      </td>
+    </tr>`;
+  } else {
+    const pill = r.status==="approved"
+      ? `<span class="pill pill-ok">Godkjent</span>`
+      : `<span class="pill pill-cancel">Avslått</span>`;
+    return `<tr>
+      <td>${r.vehicle_name||"-"}</td>
+      <td>${r.customer_name}</td>
+      <td style="white-space:nowrap">${fmtDate(r.start_date)} – ${fmtDate(r.end_date)}</td>
+      <td>${pill}</td>
+      <td>${created}</td>
+    </tr>`;
+  }
+}
+
+function attachRequestHandlers(){
+  document.querySelectorAll("[data-req-approve]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const reqId     = btn.dataset.reqApprove;
+      const vehicleId = btn.dataset.reqVid;
+      const startDate = btn.dataset.reqStart;
+      const endDate   = btn.dataset.reqEnd;
+      const custName  = btn.dataset.reqName;
+      const custEmail = btn.dataset.reqEmail;
+      const custPhone = btn.dataset.reqPhone;
+      // Sjekk overlapp
+      const overlap = DB.bookings.find(b=>
+        b.vehicleId===vehicleId && b.status!=="avlyst" &&
+        !(endDate <= b.startDate || startDate >= b.endDate)
+      );
+      if(overlap){
+        alert(`Det finnes allerede en booking for denne perioden (${fmtDate(overlap.startDate)}–${fmtDate(overlap.endDate)}). Kan ikke godkjenne uten å håndtere overlapp først.`);
+        return;
+      }
+      // Finn eller opprett kunde
+      let cust = DB.customers.find(c=>c.email===custEmail);
+      if(!cust){
+        cust = { id: uid(), name: custName, email: custEmail, phone: custPhone, notes: "Opprettet fra forespørsel" };
+        DB.customers.push(cust);
+      }
+      // Opprett booking
+      const newBooking = {
+        id: uid(), vehicleId, customerId: cust.id,
+        startDate, endDate,
+        totalPrice: 0, deposit: 0,
+        status: "bekreftet",
+        rentPaid: false, depositPaid: false, depositReturned: false,
+        damageImages: [], kmIn: "", kmOut: "", notes: "Opprettet fra forespørsel"
+      };
+      DB.bookings.push(newBooking);
+      saveData();
+      // Marker forespørsel som godkjent
+      await supabaseClient.from("booking_requests").update({status:"approved"}).eq("id", reqId);
+      showToast("Booking godkjent og lagt til! Husk å sette pris og depositum.");
+      if(currentView==="requests") await loadAndRenderRequests();
+    });
+  });
+  document.querySelectorAll("[data-req-reject]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if(!confirm("Avslå denne forespørselen?")) return;
+      await supabaseClient.from("booking_requests").update({status:"rejected"}).eq("id", btn.dataset.reqReject);
+      if(currentView==="requests") await loadAndRenderRequests();
+    });
+  });
 }
 
 /* ===================== VIEW HANDLERS ===================== */
@@ -1796,6 +1983,16 @@ function showApp(){
   document.getElementById("login-overlay").style.display = "none";
   document.getElementById("app-root").style.display = "";
   render();
+  // Last inn antall ventende forespørsler for å vise badge
+  if(cloudEnabled){
+    supabaseClient.from("booking_requests").select("id").eq("status","pending").then(({data})=>{
+      const badge = document.getElementById("req-badge");
+      if(badge && data && data.length){
+        badge.textContent = data.length;
+        badge.style.display = "";
+      }
+    });
+  }
 }
 function showLogin(message){
   document.getElementById("login-overlay").style.display = "flex";

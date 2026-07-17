@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bestill bobil</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+:root{
+  --bg:#f8fafc; --surface:#fff; --border:#e2e8f0;
+  --text:#1e293b; --muted:#64748b;
+  --accent:#2563eb; --accent-light:#eff6ff;
+  --success:#16a34a; --success-light:#f0fdf4;
+  --danger:#dc2626; --danger-light:#fef2f2;
+  --warn:#d97706; --warn-light:#fffbeb;
+  --radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh;}
+header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:16px 32px;display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:10;box-shadow:0 1px 6px rgba(0,0,0,.07);
+}
+.brand{font-size:20px;font-weight:700;}
+.header-sub{font-size:13px;color:var(--muted);margin-left:auto;}
+main{max-width:980px;margin:0 auto;padding:36px 20px 60px;}
+.hero{text-align:center;margin-bottom:40px;}
+.hero h1{font-size:28px;font-weight:800;margin-bottom:8px;}
+.hero p{color:var(--muted);font-size:15px;}
+.vehicles-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;}
+.vehicle-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;
+  box-shadow:0 1px 4px rgba(0,0,0,.05);
+  transition:box-shadow .2s,transform .2s;
+}
+.vehicle-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.1);transform:translateY(-2px);}
+.vehicle-color-bar{height:5px;}
+.vehicle-body{padding:22px;}
+.vehicle-name{font-size:19px;font-weight:700;margin-bottom:3px;}
+.vehicle-regnr{font-size:13px;color:var(--muted);margin-bottom:14px;}
+.price-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+.price-tag{border-radius:6px;padding:5px 11px;font-size:13px;font-weight:600;}
+.price-tag.daily{background:var(--accent-light);color:var(--accent);}
+.price-tag.weekend{background:#faf5ff;color:#7c3aed;}
+.price-tag.hs{background:#fff7ed;color:#c2410c;}
+/* Calendar */
+.cal-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:18px;}
+.cal-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f1f5f9;}
+.cal-nav-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;color:var(--text);}
+.cal-nav-btn:hover{background:var(--accent-light);}
+.cal-month{font-size:14px;font-weight:600;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;}
+.cal-dow{text-align:center;font-size:11px;color:var(--muted);padding:6px 0;background:#f8fafc;font-weight:600;border-bottom:1px solid var(--border);}
+.cal-day{
+  text-align:center;padding:8px 2px;font-size:13px;
+  border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+  cursor:default;min-height:36px;display:flex;align-items:center;justify-content:center;
+  transition:background .1s;
+}
+.cal-day.other{color:#cbd5e1;background:#fafafa;}
+.cal-day.past{color:#cbd5e1;}
+.cal-day.blocked{background:#fee2e2;color:#b91c1c;text-decoration:line-through;cursor:not-allowed;}
+.cal-day.available{cursor:default;}
+.cal-day.today{font-weight:700;background:var(--accent-light);color:var(--accent);}
+.cal-legend{display:flex;gap:14px;padding:8px 14px;background:#f8fafc;border-top:1px solid var(--border);font-size:12px;color:var(--muted);}
+.legend-dot{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:4px;}
+/* Book button */
+.book-btn{
+  width:100%;background:var(--accent);color:#fff;border:none;
+  border-radius:9px;padding:13px;font-size:15px;font-weight:700;
+  cursor:pointer;transition:background .15s,transform .1s;
+}
+.book-btn:hover{background:#1d4ed8;transform:translateY(-1px);}
+/* Modal */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);
+  display:none;align-items:center;justify-content:center;z-index:100;padding:20px;
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--surface);border-radius:var(--radius);
+  padding:28px;width:100%;max-width:510px;max-height:90vh;overflow-y:auto;
+  box-shadow:0 16px 48px rgba(0,0,0,.18);
+}
+.modal h2{margin-bottom:6px;}
+.modal-subtitle{color:var(--muted);font-size:14px;margin-bottom:20px;}
+.form-row{margin-bottom:14px;}
+.form-row label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:5px;}
+.form-row input,.form-row select,.form-row textarea{
+  width:100%;padding:10px 12px;border:1.5px solid var(--border);
+  border-radius:8px;font-size:14px;background:var(--bg);color:var(--text);
+  transition:border-color .15s;
+}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{
+  outline:none;border-color:var(--accent);
+}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.vehicle-info-box{
+  background:var(--accent-light);border-radius:8px;padding:12px 14px;
+  font-size:13px;color:var(--accent);margin-bottom:18px;font-weight:500;
+}
+.error-msg{
+  background:var(--danger-light);color:var(--danger);border-radius:8px;
+  padding:10px 13px;font-size:13px;margin-bottom:14px;display:none;
+}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;}
+.btn{border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s;}
+.btn:hover{filter:brightness(.92);}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-ghost{background:var(--bg);border:1.5px solid var(--border);color:var(--text);}
+.btn:disabled{opacity:.6;cursor:not-allowed;}
+/* Success */
+.success-box{text-align:center;padding:20px 10px;display:none;}
+.success-icon{font-size:48px;margin-bottom:12px;}
+.success-box h3{font-size:22px;margin-bottom:8px;color:var(--success);}
+.success-box p{color:var(--muted);font-size:15px;margin-bottom:18px;}
+/* Loading */
+.loading{text-align:center;padding:60px 20px;color:var(--muted);font-size:15px;}
+.loading-spinner{font-size:32px;margin-bottom:12px;}
+/* Footer */
+footer{text-align:center;padding:24px;color:var(--muted);font-size:13px;border-top:1px solid var(--border);margin-top:40px;}
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:26px">🚐</span>
+  <span class="brand">Bobil Bestilling</span>
+  <span class="header-sub">Send forespørsel — vi bekrefter så raskt vi kan</span>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Ledige bobiler</h1>
+    <p>Velg bobil, se ledige datoer og send en forespørsel — vi bekrefter bookingen din innen kort tid.</p>
+  </div>
+  <div id="app-content">
+    <div class="loading">
+      <div class="loading-spinner">🔄</div>
+      Laster tilgjengelige biler…
+    </div>
+  </div>
+</main>
+
+<!-- Booking request modal -->
+<div class="modal-overlay" id="request-overlay">
+  <div class="modal">
+    <div id="req-success" class="success-box">
+      <div class="success-icon">✅</div>
+      <h3>Forespørsel sendt!</h3>
+      <p>Vi tar kontakt med deg så snart som mulig for å bekrefte bookingen din.</p>
+      <button class="btn btn-ghost" onclick="closeRequestModal()">Lukk</button>
+    </div>
+    <div id="req-form-wrap">
+      <h2>📩 Send forespørsel</h2>
+      <div class="modal-subtitle">Fyll ut skjemaet, så kontakter vi deg for å bekrefte.</div>
+      <div class="vehicle-info-box" id="req-vehicle-info"></div>
+      <div class="error-msg" id="req-error"></div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Fra dato *</label>
+          <input type="date" id="req-start">
+        </div>
+        <div class="form-row">
+          <label>Til dato *</label>
+          <input type="date" id="req-end">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Fullt navn *</label>
+          <input type="text" id="req-name" placeholder="Ola Nordmann">
+        </div>
+        <div class="form-row">
+          <label>Telefon</label>
+          <input type="tel" id="req-phone" placeholder="900 00 000">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>E-postadresse *</label>
+        <input type="email" id="req-email" placeholder="din@epost.no">
+      </div>
+      <div class="form-row">
+        <label>Melding (valgfri)</label>
+        <textarea id="req-message" rows="3" placeholder="Antall passasjerer, reisemål, spørsmål…"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeRequestModal()">Avbryt</button>
+        <button class="btn btn-primary" id="req-submit-btn" onclick="submitRequest()">Send forespørsel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Bestillingssiden drives av Bobil Booking &nbsp;·&nbsp; Spørsmål? Ta kontakt direkte.
+</footer>
+
+<script>
+/* ============================================================
+   KONFIGURASJON — Samme verdier som i bobil_booking.html
+   ============================================================ */
+const SUPABASE_URL      = "https://kydkjszbgdgvvkiicftg.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_maTxWGDwgcVBnpaCLNKGFA_UmrrPGLx";
+
+/* EmailJS — for e-postvarsling til deg når noen sender forespørsel.
+   1. Opprett gratis konto på emailjs.com
+   2. Koble til Gmail-tjenesten din
+   3. Opprett en e-postmal (se oppsettsveiledningen)
+   4. Lim inn verdiene nedenfor.
+   Sett alle til "" for å hoppe over — forespørsler lagres uansett i Supabase. */
+const EMAILJS_SERVICE_ID  = "";
+const EMAILJS_TEMPLATE_ID = "";
+const EMAILJS_PUBLIC_KEY  = "";
+const OWNER_EMAIL         = "steffen.skaar@gmail.com";
+/* ============================================================ */
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let vehicles       = [];
+let blockedDates   = [];   // [{vehicle_id, start_date, end_date}, ...]
+let selectedVehicle = null;
+let calViewMonth   = {};   // vehicleId -> Date (first day of displayed month)
+
+/* ---------- helpers ---------- */
+function toISO(d){ return d.toISOString().slice(0,10); }
+function addDays(iso, n){ const d = new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return toISO(d); }
+function fmtKr(n){ return (Math.round(n||0)).toLocaleString("nb-NO") + " kr"; }
+function fmtDate(iso){ return new Date(iso+"T00:00:00").toLocaleDateString("nb-NO",{day:"2-digit",month:"2-digit",year:"numeric"}); }
+function firstOfMonth(d){ const m = new Date(d); m.setDate(1); return m; }
+function isBlocked(vehicleId, dateISO){
+  return blockedDates.some(b => b.vehicle_id===vehicleId && dateISO >= b.start_date && dateISO < b.end_date);
+}
+function todayISO(){ return toISO(new Date()); }
+
+/* ---------- load data ---------- */
+async function loadData(){
+  try {
+    const [vRes, bRes] = await Promise.all([
+      sb.from("public_vehicles").select("*").order("name"),
+      sb.from("public_bookings").select("*")
+    ]);
+    if(vRes.error) throw vRes.error;
+    if(bRes.error) throw bRes.error;
+    vehicles     = vRes.data || [];
+    blockedDates = bRes.data || [];
+    renderApp();
+  } catch(e){
+    console.error(e);
+    document.getElementById("app-content").innerHTML =
+      `<div class="loading"><p style="color:#dc2626">Kunne ikke laste data. Prøv å laste siden på nytt.</p></div>`;
+  }
+}
+
+/* ---------- render ---------- */
+function renderApp(){
+  if(vehicles.length === 0){
+    document.getElementById("app-content").innerHTML =
+      `<div class="loading"><div style="font-size:40px;margin-bottom:12px">🚌</div><p>Ingen bobiler er tilgjengelig for bestilling akkurat nå.</p></div>`;
+    return;
+  }
+  vehicles.forEach(v => { if(!calViewMonth[v.id]) calViewMonth[v.id] = firstOfMonth(new Date()); });
+  document.getElementById("app-content").innerHTML =
+    `<div class="vehicles-grid">${vehicles.map(vehicleCard).join("")}</div>`;
+  attachCardHandlers();
+}
+
+function vehicleCard(v){
+  return `
+  <div class="vehicle-card">
+    <div class="vehicle-color-bar" style="background:${v.color||'#2563eb'}"></div>
+    <div class="vehicle-body">
+      <div class="vehicle-name">${escHtml(v.name)}</div>
+      ${v.regnr ? `<div class="vehicle-regnr">Reg.nr: ${escHtml(v.regnr)}</div>` : `<div class="vehicle-regnr">&nbsp;</div>`}
+      <div class="price-tags">
+        ${v.daily_rate   ? `<span class="price-tag daily">${fmtKr(v.daily_rate)} / natt</span>`        : ""}
+        ${v.weekend_rate ? `<span class="price-tag weekend">Helg: ${fmtKr(v.weekend_rate)}</span>`     : ""}
+        ${v.high_season_rate ? `<span class="price-tag hs">Høysesong: ${fmtKr(v.high_season_rate)}</span>` : ""}
+      </div>
+      <div class="cal-wrap">
+        ${buildCalendar(v)}
+        <div class="cal-legend">
+          <span><span class="legend-dot" style="background:#fee2e2;border:1px solid #fca5a5"></span>Opptatt</span>
+          <span><span class="legend-dot" style="background:var(--accent-light);border:1px solid #93c5fd"></span>I dag</span>
+        </div>
+      </div>
+      <button class="book-btn" data-vid="${v.id}">Forespør booking →</button>
+    </div>
+  </div>`;
+}
+
+function buildCalendar(v){
+  const month  = calViewMonth[v.id];
+  const year   = month.getFullYear();
+  const m      = month.getMonth();
+  const today  = todayISO();
+  const monthLabel = month.toLocaleDateString("nb-NO", {month:"long", year:"numeric"});
+  // First weekday (Mon=0)
+  let startDow = new Date(year, m, 1).getDay();
+  startDow = startDow === 0 ? 6 : startDow - 1;
+  const daysInMonth = new Date(year, m+1, 0).getDate();
+  const DOW = ["Man","Tir","Ons","Tor","Fre","Lør","Søn"];
+  let cells = DOW.map(d=>`<div class="cal-dow">${d}</div>`).join("");
+  // Empty cells before
+  for(let i=0;i<startDow;i++) cells += `<div class="cal-day other"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const iso = `${year}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const blocked = isBlocked(v.id, iso);
+    const past    = iso < today;
+    const isToday = iso === today;
+    let cls = "cal-day";
+    if(past)    cls += " past";
+    else if(blocked) cls += " blocked";
+    else cls += " available";
+    if(isToday) cls += " today";
+    cells += `<div class="${cls}" title="${blocked?"Opptatt":"Ledig"}">${d}</div>`;
+  }
+  return `
+    <div class="cal-header">
+      <button class="cal-nav-btn" data-cal-vid="${v.id}" data-cal-dir="-1">‹</button>
+      <span class="cal-month">${monthLabel}</span>
+      <button class="cal-nav-btn" data-cal-vid="${v.id}" data-cal-dir="1">›</button>
+    </div>
+    <div class="cal-grid">${cells}</div>`;
+}
+
+function attachCardHandlers(){
+  document.querySelectorAll("[data-cal-vid]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const vid = btn.dataset.calVid;
+      const dir = parseInt(btn.dataset.calDir);
+      const cur = calViewMonth[vid];
+      calViewMonth[vid] = new Date(cur.getFullYear(), cur.getMonth()+dir, 1);
+      renderApp();
+    });
+  });
+  document.querySelectorAll(".book-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const v = vehicles.find(x=>x.id===btn.dataset.vid);
+      if(v) openRequestModal(v);
+    });
+  });
+}
+
+/* ---------- modal ---------- */
+function openRequestModal(v){
+  selectedVehicle = v;
+  const priceStr = v.daily_rate ? ` · ${fmtKr(v.daily_rate)}/natt` : "";
+  document.getElementById("req-vehicle-info").textContent =
+    `🚐 ${v.name}${v.regnr?" ("+v.regnr+")":""}${priceStr}`;
+  document.getElementById("req-error").style.display = "none";
+  document.getElementById("req-success").style.display = "none";
+  document.getElementById("req-form-wrap").style.display = "block";
+  ["req-name","req-email","req-phone","req-message"].forEach(id=>{ document.getElementById(id).value=""; });
+  const t = todayISO();
+  document.getElementById("req-start").min = t;
+  document.getElementById("req-end").min = t;
+  document.getElementById("req-start").value = "";
+  document.getElementById("req-end").value = "";
+  document.getElementById("req-submit-btn").disabled = false;
+  document.getElementById("req-submit-btn").textContent = "Send forespørsel";
+  document.getElementById("request-overlay").classList.add("open");
+}
+
+function closeRequestModal(){
+  document.getElementById("request-overlay").classList.remove("open");
+  selectedVehicle = null;
+}
+document.getElementById("request-overlay").addEventListener("click", e=>{
+  if(e.target === document.getElementById("request-overlay")) closeRequestModal();
+});
+
+/* ---------- submit ---------- */
+async function submitRequest(){
+  const errEl = document.getElementById("req-error");
+  errEl.style.display = "none";
+  const start = document.getElementById("req-start").value;
+  const end   = document.getElementById("req-end").value;
+  const name  = document.getElementById("req-name").value.trim();
+  const email = document.getElementById("req-email").value.trim();
+  const phone = document.getElementById("req-phone").value.trim();
+  const msg   = document.getElementById("req-message").value.trim();
+
+  if(!start || !end)          { showErr("Velg fra- og til-dato."); return; }
+  if(end <= start)             { showErr("Til-dato må være etter fra-dato."); return; }
+  if(start < todayISO())       { showErr("Fra-dato kan ikke være i fortiden."); return; }
+  if(!name)                    { showErr("Fyll inn navn."); return; }
+  if(!email || !email.includes("@")){ showErr("Fyll inn gyldig e-postadresse."); return; }
+
+  // Check availability day by day
+  let d = start;
+  while(d < end){
+    if(isBlocked(selectedVehicle.id, d)){
+      showErr(`${fmtDate(d)} er allerede opptatt. Velg andre datoer.`); return;
+    }
+    d = addDays(d, 1);
+  }
+
+  const btn = document.getElementById("req-submit-btn");
+  btn.disabled = true;
+  btn.textContent = "Sender…";
+
+  try {
+    const { error } = await sb.from("booking_requests").insert({
+      vehicle_id:    selectedVehicle.id,
+      vehicle_name:  selectedVehicle.name,
+      customer_name: name,
+      customer_email: email,
+      customer_phone: phone,
+      start_date:    start,
+      end_date:      end,
+      message:       msg,
+      status:        "pending"
+    });
+    if(error) throw error;
+
+    // Email notification (optional — only if EmailJS is configured)
+    if(EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY){
+      try {
+        emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+          to_email:      OWNER_EMAIL,
+          vehicle_name:  selectedVehicle.name,
+          customer_name: name,
+          customer_email: email,
+          customer_phone: phone || "Ikke oppgitt",
+          start_date:    fmtDate(start),
+          end_date:      fmtDate(end),
+          message:       msg || "Ingen melding"
+        });
+      } catch(emailErr){
+        console.warn("E-postvarsling feilet (forespørselen er lagret):", emailErr);
+      }
+    }
+
+    // Show success
+    document.getElementById("req-form-wrap").style.display = "none";
+    document.getElementById("req-success").style.display = "block";
+
+  } catch(e){
+    console.error(e);
+    showErr("Kunne ikke sende forespørselen. Sjekk internettforbindelsen og prøv igjen.");
+    btn.disabled = false;
+    btn.textContent = "Send forespørsel";
+  }
+}
+
+function showErr(msg){
+  const el = document.getElementById("req-error");
+  el.textContent = msg;
+  el.style.display = "block";
+  el.scrollIntoView({ behavior:"smooth", block:"nearest" });
+}
+
+function escHtml(s){
+  return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* ---------- start ---------- */
+loadData();
+</script>
+</body>
+</html>
