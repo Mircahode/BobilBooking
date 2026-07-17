@@ -226,7 +226,7 @@ let selectedVehicle = null;
 let calViewMonth   = {};   // vehicleId -> Date (first day of displayed month)
 
 /* ---------- helpers ---------- */
-function toISO(d){ return d.toISOString().slice(0,10); }
+function toISO(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${day}`; }
 function addDays(iso, n){ const d = new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return toISO(d); }
 function fmtKr(n){ return (Math.round(n||0)).toLocaleString("nb-NO") + " kr"; }
 function fmtDate(iso){ return new Date(iso+"T00:00:00").toLocaleDateString("nb-NO",{day:"2-digit",month:"2-digit",year:"numeric"}); }

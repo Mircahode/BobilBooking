@@ -716,7 +716,7 @@ if(DB.vehicles.length === 0 && DB.customers.length === 0 && DB.bookings.length =
 /* ===================== HELPERS ===================== */
 function fmtKr(n){ return (Math.round(n||0)).toLocaleString("nb-NO") + " kr"; }
 function fmtDate(d){ return new Date(d).toLocaleDateString("nb-NO", {day:"2-digit", month:"2-digit", year:"numeric"}); }
-function toISO(date){ return date.toISOString().slice(0,10); }
+function toISO(date){ const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,"0"), d=String(date.getDate()).padStart(2,"0"); return `${y}-${m}-${d}`; }
 function addDays(dateStr, n){ const d = new Date(dateStr+"T00:00:00"); d.setDate(d.getDate()+n); return toISO(d); }
 function nightsBetween(start, end){
   const s = new Date(start+"T00:00:00"), e = new Date(end+"T00:00:00");
