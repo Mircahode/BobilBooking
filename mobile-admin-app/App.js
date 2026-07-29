@@ -147,7 +147,7 @@ const VEHICLE_COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#a855f7", "
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#f8fafc" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-  screen: { flex: 1, padding: 14, backgroundColor: "#f8fafc" },
+  screen: { flex: 1, paddingHorizontal: 12, paddingTop: 12, backgroundColor: "#f8fafc" },
 
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -164,11 +164,11 @@ const styles = StyleSheet.create({
   tabBtnText: { color: "#64748b", fontWeight: "600", fontSize: 13 },
   tabBtnTextActive: { color: "#3b82f6" },
 
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#0f172a", marginBottom: 10 },
+  sectionTitle: { fontSize: 15, fontWeight: "700", color: "#0f172a", marginBottom: 8 },
   mutedText: { color: "#64748b", fontSize: 13 },
   errorText: { color: "#ef4444", fontSize: 13, marginTop: 4, marginBottom: 4 },
   dangerText: { color: "#ef4444", fontWeight: "600", fontSize: 13 },
-  fieldLabel: { fontSize: 13, fontWeight: "600", color: "#334155", marginBottom: 6 },
+  fieldLabel: { fontSize: 12, fontWeight: "600", color: "#475569", marginBottom: 5 },
   loginTitle: { fontSize: 20, fontWeight: "700", color: "#0f172a", marginTop: 10 },
 
   input: {
@@ -181,16 +181,6 @@ const styles = StyleSheet.create({
   dangerBtn: { backgroundColor: "#fee2e2", borderRadius: 10, paddingVertical: 13, alignItems: "center", marginTop: 10 },
   dangerBtnText: { color: "#b91c1c", fontWeight: "700", fontSize: 15 },
 
-  statGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginBottom: 16 },
-  statCard: {
-    width: "48%", backgroundColor: "#fff", borderRadius: 12, padding: 14, marginBottom: 10,
-    borderWidth: 1, borderColor: "#e2e8f0",
-  },
-  statValue: { fontSize: 24, fontWeight: "800", color: "#0f172a" },
-  statLabel: { fontSize: 12, color: "#64748b", marginTop: 2 },
-
-  warnBanner: { backgroundColor: "#fef9c3", borderRadius: 10, padding: 12, marginBottom: 16 },
-  warnBannerText: { color: "#a16207", fontSize: 13, fontWeight: "600" },
 
   rowCard: {
     flexDirection: "row", backgroundColor: "#fff", borderRadius: 12, padding: 12, marginBottom: 8,
@@ -221,7 +211,7 @@ const styles = StyleSheet.create({
   },
   colorSwatchActive: { borderColor: "#0f172a" },
 
-  checkRow: { flexDirection: "row", alignItems: "center", marginBottom: 14, gap: 10 },
+  checkRow: { flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 10 },
 
   modalHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -229,7 +219,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 17, fontWeight: "700", color: "#0f172a" },
   closeText: { color: "#3b82f6", fontWeight: "600", fontSize: 15 },
-  modalBody: { flex: 1, padding: 16 },
+  modalBody: { flex: 1, paddingHorizontal: 14, paddingTop: 14 },
 
   damageThumb: { width: 72, height: 72, borderRadius: 8, backgroundColor: "#e2e8f0" },
   damageRemoveBtn: {
@@ -254,6 +244,48 @@ const styles = StyleSheet.create({
   calendarCellSelected: { backgroundColor: "#dbeafe" },
   calendarCellToday: { backgroundColor: "#fef9c3" },
   calendarDayNum: { fontSize: 13, color: "#0f172a", fontWeight: "600" },
+
+  /* --- dashbord (oversikt) --- */
+  kpiGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4, marginBottom: 6 },
+  kpiCard: {
+    width: "50%", paddingHorizontal: 4, marginBottom: 8,
+  },
+  kpiInner: {
+    backgroundColor: "#fff", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 11,
+    borderWidth: 1, borderColor: "#e2e8f0",
+  },
+  kpiLabel: { fontSize: 11, color: "#64748b", fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.3 },
+  kpiValue: { fontSize: 19, fontWeight: "800", color: "#0f172a", marginTop: 2 },
+  kpiSub: { fontSize: 11, color: "#94a3b8", marginTop: 1 },
+
+  panel: {
+    backgroundColor: "#fff", borderRadius: 10, padding: 12, marginBottom: 10,
+    borderWidth: 1, borderColor: "#e2e8f0",
+  },
+  panelTitle: { fontSize: 14, fontWeight: "700", color: "#0f172a", marginBottom: 8 },
+
+  barLabel: { fontSize: 12, color: "#334155", fontWeight: "600" },
+  barTrack: { height: 8, borderRadius: 4, backgroundColor: "#f1f5f9", overflow: "hidden", marginTop: 3, marginBottom: 8 },
+
+  attentionRow: {
+    paddingVertical: 8, borderTopWidth: 1, borderTopColor: "#f1f5f9",
+  },
+  openText: { color: "#3b82f6", fontWeight: "600", fontSize: 13 },
+
+  /* --- datovelger --- */
+  dateFieldBtn: {
+    borderWidth: 1, borderColor: "#cbd5e1", borderRadius: 8, paddingHorizontal: 12,
+    paddingVertical: 11, backgroundColor: "#fff", flexDirection: "row",
+    alignItems: "center", justifyContent: "space-between",
+  },
+  dateFieldText: { fontSize: 15, color: "#0f172a" },
+  dateFieldPlaceholder: { fontSize: 15, color: "#94a3b8" },
+  dateSheet: {
+    backgroundColor: "#fff", borderTopLeftRadius: 16, borderTopRightRadius: 16,
+    paddingHorizontal: 14, paddingBottom: 24, paddingTop: 8,
+  },
+  dateSheetBackdrop: { flex: 1, backgroundColor: "rgba(15,23,42,0.4)", justifyContent: "flex-end" },
+  quickRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 8 },
 });
 
 /* ===================== ROT-APP ===================== */
@@ -521,16 +553,6 @@ function StatusPill({ status }) {
   );
 }
 
-function StatCard({ label, value, onPress }) {
-  const Wrap = onPress ? TouchableOpacity : View;
-  return (
-    <Wrap style={styles.statCard} onPress={onPress}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </Wrap>
-  );
-}
-
 function BookingRow({ booking, db, onPress }) {
   const v = vehicleById(db, booking.vehicleId);
   const c = customerById(db, booking.customerId);
@@ -550,42 +572,155 @@ function BookingRow({ booking, db, onPress }) {
   );
 }
 
-/* ===================== OVERSIKT ===================== */
+/* ===================== OVERSIKT (dashbord) ===================== */
+function totalMonthlyFixedCosts(db) {
+  return db.fixedCosts.filter((f) => f.active !== false).reduce((s, f) => s + Number(f.amountPerMonth || 0), 0);
+}
+
+function DepositPill({ booking }) {
+  if (!booking.deposit) return <View style={[styles.pill, { backgroundColor: "#e2e8f0" }]}><Text style={[styles.pillText, { color: "#64748b" }]}>Ingen</Text></View>;
+  if (booking.depositReturned) return <View style={[styles.pill, { backgroundColor: "#dcfce7" }]}><Text style={[styles.pillText, { color: "#15803d" }]}>Returnert</Text></View>;
+  if (booking.depositPaid) return <View style={[styles.pill, { backgroundColor: "#fef9c3" }]}><Text style={[styles.pillText, { color: "#a16207" }]}>Ikke returnert</Text></View>;
+  return <View style={[styles.pill, { backgroundColor: "#fee2e2" }]}><Text style={[styles.pillText, { color: "#b91c1c" }]}>Ikke betalt</Text></View>;
+}
+
+function RentPill({ booking }) {
+  return booking.rentPaid
+    ? <View style={[styles.pill, { backgroundColor: "#dcfce7" }]}><Text style={[styles.pillText, { color: "#15803d" }]}>Leie betalt</Text></View>
+    : <View style={[styles.pill, { backgroundColor: "#fee2e2" }]}><Text style={[styles.pillText, { color: "#b91c1c" }]}>Leie ubetalt</Text></View>;
+}
+
+function KpiCard({ label, value, sub, color }) {
+  return (
+    <View style={styles.kpiCard}>
+      <View style={styles.kpiInner}>
+        <Text style={styles.kpiLabel} numberOfLines={1}>{label}</Text>
+        <Text style={[styles.kpiValue, color && { color }]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+        {!!sub && <Text style={styles.kpiSub} numberOfLines={1}>{sub}</Text>}
+      </View>
+    </View>
+  );
+}
+
 function OversiktScreen({ db, onOpenBooking, onGoTab }) {
   const today = todayISO();
-  const activeBookings = db.bookings.filter((b) => b.status !== "avlyst");
-  const upcoming = activeBookings
-    .filter((b) => b.endDate >= today)
-    .sort((a, b) => (a.startDate < b.startDate ? -1 : 1))
-    .slice(0, 8);
-  const pågår = activeBookings.filter((b) => b.startDate <= today && b.endDate > today).length;
-  const kommende30 = activeBookings.filter((b) => b.startDate > today && b.startDate <= addDays(today, 30)).length;
-  const ubetaltDepositum = activeBookings.filter((b) => b.status === "bekreftet" && !b.depositPaid && (b.deposit || 0) > 0).length;
-  const uåpnedeSkader = activeBookings.filter((b) => (b.damageNotes || "").trim() || (b.damageImages || []).length > 0).length;
+  const now = new Date();
+  const yearNow = now.getFullYear();
+  const monthStart = `${yearNow}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const nextMonth = now.getMonth() === 11 ? `${yearNow + 1}-01-01` : `${yearNow}-${String(now.getMonth() + 2).padStart(2, "0")}-01`;
+  const yearStart = `${yearNow}-01-01`, nextYear = `${yearNow + 1}-01-01`;
+
+  const inMonth = (d) => d >= monthStart && d < nextMonth;
+  const inYear = (d) => d >= yearStart && d < nextYear;
+
+  const confirmed = db.bookings.filter((b) => b.status === "bekreftet");
+  const monthRevenue = confirmed.filter((b) => inMonth(b.startDate)).reduce((s, b) => s + Number(b.totalPrice || 0), 0);
+  const yearRevenue = confirmed.filter((b) => inYear(b.startDate)).reduce((s, b) => s + Number(b.totalPrice || 0), 0);
+  const monthFixedCosts = totalMonthlyFixedCosts(db);
+  const yearFixedCosts = monthFixedCosts * (now.getMonth() + 1);
+  const monthOneOff = db.costs.filter((k) => inMonth(k.date)).reduce((s, k) => s + Number(k.amount || 0), 0);
+  const yearOneOff = db.costs.filter((k) => inYear(k.date)).reduce((s, k) => s + Number(k.amount || 0), 0);
+  const monthCosts = monthOneOff + monthFixedCosts;
+  const yearCosts = yearOneOff + yearFixedCosts;
+  const monthProfit = monthRevenue - monthCosts;
+  const yearProfit = yearRevenue - yearCosts;
+
+  // Belegg denne måneden (streng-sammenligning = tidssone-trygt)
+  const daysInMonth = new Date(yearNow, now.getMonth() + 1, 0).getDate();
+  const totalAvailable = db.vehicles.length * daysInMonth;
+  let bookedNights = 0;
+  confirmed.forEach((b) => {
+    const s = b.startDate > monthStart ? b.startDate : monthStart;
+    const e = b.endDate < nextMonth ? b.endDate : nextMonth;
+    if (e > s) bookedNights += nightsBetween(s, e);
+  });
+  const occupancy = totalAvailable > 0 ? Math.round((bookedNights / totalAvailable) * 100) : 0;
+
+  const upcoming = db.bookings
+    .filter((b) => b.status !== "avlyst" && b.endDate >= today)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))
+    .slice(0, 6);
+
+  const needsAttention = db.bookings.filter((b) => {
+    if (b.status === "avlyst") return false;
+    const depositIssue = b.deposit > 0 && !b.depositPaid && b.startDate <= addDays(today, 7) && b.startDate >= today;
+    const returnIssue = b.deposit > 0 && b.depositPaid && !b.depositReturned && b.endDate <= today;
+    const rentIssue = !b.rentPaid && b.startDate <= today;
+    return depositIssue || returnIssue || rentIssue;
+  }).sort((a, b) => a.endDate.localeCompare(b.endDate));
+
+  const revenueByVehicle = db.vehicles
+    .map((v) => ({ v, rev: confirmed.filter((b) => b.vehicleId === v.id && inYear(b.startDate)).reduce((s, b) => s + Number(b.totalPrice || 0), 0) }))
+    .sort((a, b) => b.rev - a.rev);
+  const maxRev = Math.max(1, ...revenueByVehicle.map((r) => r.rev));
+
+  const GREEN = "#16a34a", RED = "#dc2626";
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={styles.statGrid}>
-        <StatCard label="Biler" value={db.vehicles.length} onPress={() => onGoTab("biler")} />
-        <StatCard label="Pågår nå" value={pågår} onPress={() => onGoTab("kalender")} />
-        <StatCard label="Neste 30 dager" value={kommende30} onPress={() => onGoTab("bookinger")} />
-        <StatCard label="Depositum ubetalt" value={ubetaltDepositum} onPress={() => onGoTab("bookinger")} />
+      <Text style={styles.sectionTitle}>Denne måneden</Text>
+      <View style={styles.kpiGrid}>
+        <KpiCard label="Inntekt" value={fmtKr(monthRevenue)} sub="Bekreftede bookinger" color={GREEN} />
+        <KpiCard label="Kostnader" value={fmtKr(monthCosts)} sub={`herav ${fmtKr(monthFixedCosts)} faste`} color={RED} />
+        <KpiCard label="Resultat" value={fmtKr(monthProfit)} color={monthProfit >= 0 ? GREEN : RED} />
+        <KpiCard label="Belegg" value={`${occupancy}%`} sub={`${bookedNights} av ${totalAvailable} netter`} />
       </View>
 
-      {uåpnedeSkader > 0 && (
-        <View style={styles.warnBanner}>
-          <Text style={styles.warnBannerText}>🔧 {uåpnedeSkader} booking(er) har registrert skade/notat.</Text>
-        </View>
-      )}
+      <Text style={styles.sectionTitle}>Hittil i år ({yearNow})</Text>
+      <View style={styles.kpiGrid}>
+        <KpiCard label="Inntekt i år" value={fmtKr(yearRevenue)} color={GREEN} />
+        <KpiCard label="Kostnader i år" value={fmtKr(yearCosts)} sub={`herav ${fmtKr(yearFixedCosts)} faste`} color={RED} />
+        <KpiCard label="Resultat i år" value={fmtKr(yearProfit)} color={yearProfit >= 0 ? GREEN : RED} />
+        <KpiCard label="Antall biler" value={String(db.vehicles.length)} sub={`${db.customers.length} kunder registrert`} />
+      </View>
 
-      <Text style={styles.sectionTitle}>Kommende bookinger</Text>
-      {upcoming.length === 0 ? (
-        <Text style={styles.mutedText}>Ingen kommende bookinger.</Text>
-      ) : (
-        upcoming.map((b) => <BookingRow key={b.id} booking={b} db={db} onPress={() => onOpenBooking(b)} />)
-      )}
+      <View style={styles.panel}>
+        <Text style={styles.panelTitle}>Inntekt per bil i år</Text>
+        {revenueByVehicle.length === 0 ? (
+          <Text style={styles.mutedText}>Ingen biler lagt til ennå.</Text>
+        ) : revenueByVehicle.map((r) => (
+          <View key={r.v.id} style={{ marginBottom: 10 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+              <Text style={styles.barLabel}>{r.v.name}</Text>
+              <Text style={styles.barLabel}>{fmtKr(r.rev)}</Text>
+            </View>
+            <View style={styles.barTrack}>
+              <View style={{ height: "100%", width: `${(r.rev / maxRev) * 100}%`, backgroundColor: r.v.color || "#3b82f6", borderRadius: 5 }} />
+            </View>
+          </View>
+        ))}
+      </View>
 
-      <TouchableOpacity style={[styles.primaryBtn, { marginTop: 20 }]} onPress={() => onOpenBooking(null)}>
+      <View style={styles.panel}>
+        <Text style={styles.panelTitle}>⚠️ Krever oppfølging</Text>
+        {needsAttention.length === 0 ? (
+          <Text style={styles.mutedText}>Ingen åpne saker akkurat nå. 🎉</Text>
+        ) : needsAttention.map((b) => {
+          const v = vehicleById(db, b.vehicleId), c = customerById(db, b.customerId);
+          return (
+            <TouchableOpacity key={b.id} style={styles.attentionRow} onPress={() => onOpenBooking(b)}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>{(v && v.name) || "Ukjent bil"} — {(c && c.name) || "Ukjent"}</Text>
+                <Text style={styles.mutedText}>{fmtDate(b.startDate)} – {fmtDate(b.endDate)}</Text>
+                <View style={{ flexDirection: "row", marginTop: 6, flexWrap: "wrap", gap: 6 }}>
+                  <RentPill booking={b} />
+                  <DepositPill booking={b} />
+                </View>
+              </View>
+              <Text style={styles.openText}>Åpne ›</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={styles.panel}>
+        <Text style={styles.panelTitle}>Kommende bookinger</Text>
+        {upcoming.length === 0 ? (
+          <Text style={styles.mutedText}>Ingen kommende bookinger.</Text>
+        ) : upcoming.map((b) => <BookingRow key={b.id} booking={b} db={db} onPress={() => onOpenBooking(b)} />)}
+      </View>
+
+      <TouchableOpacity style={styles.primaryBtn} onPress={() => onOpenBooking(null)}>
         <Text style={styles.primaryBtnText}>+ Ny booking</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -606,6 +741,92 @@ function buildMonthGrid(year, month) {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
   while (cells.length % 7 !== 0) cells.push(null);
   return cells;
+}
+
+/* ===================== DATOVELGER ===================== */
+function DateField({ value, onChange, placeholder, minDate, quick }) {
+  const [open, setOpen] = useState(false);
+  const base = value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(Number(value.slice(0, 4)), Number(value.slice(5, 7)) - 1, 1) : new Date();
+  const [cursor, setCursor] = useState({ y: base.getFullYear(), m: base.getMonth() });
+  const cells = useMemo(() => buildMonthGrid(cursor.y, cursor.m), [cursor]);
+  const today = todayISO();
+
+  const openSheet = () => {
+    const b = value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(Number(value.slice(0, 4)), Number(value.slice(5, 7)) - 1, 1) : new Date();
+    setCursor({ y: b.getFullYear(), m: b.getMonth() });
+    setOpen(true);
+  };
+  const pick = (d) => {
+    onChange(toISO(new Date(cursor.y, cursor.m, d)));
+    setOpen(false);
+  };
+  const shift = (n) => {
+    const d = new Date(cursor.y, cursor.m + n, 1);
+    setCursor({ y: d.getFullYear(), m: d.getMonth() });
+  };
+
+  return (
+    <>
+      <TouchableOpacity style={styles.dateFieldBtn} onPress={openSheet}>
+        <Text style={value ? styles.dateFieldText : styles.dateFieldPlaceholder}>
+          {value ? fmtDate(value) : placeholder || "Velg dato"}
+        </Text>
+        <Text style={{ fontSize: 15 }}>📅</Text>
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <TouchableOpacity style={styles.dateSheetBackdrop} activeOpacity={1} onPress={() => setOpen(false)}>
+          <TouchableOpacity style={styles.dateSheet} activeOpacity={1} onPress={() => {}}>
+            <View style={styles.calendarNav}>
+              <TouchableOpacity style={styles.calendarNavBtn} onPress={() => shift(-1)}>
+                <Text style={styles.calendarNavText}>‹</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>{NB_MONTHS[cursor.m]} {cursor.y}</Text>
+              <TouchableOpacity style={styles.calendarNavBtn} onPress={() => shift(1)}>
+                <Text style={styles.calendarNavText}>›</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.weekdayRow}>
+              {NB_WEEKDAYS.map((w) => <Text key={w} style={styles.weekdayText}>{w}</Text>)}
+            </View>
+
+            <View style={styles.calendarGrid}>
+              {cells.map((d, i) => {
+                if (d === null) return <View key={`e${i}`} style={styles.calendarCell} />;
+                const iso = toISO(new Date(cursor.y, cursor.m, d));
+                const disabled = !!minDate && iso < minDate;
+                const selected = iso === value;
+                return (
+                  <TouchableOpacity
+                    key={iso}
+                    disabled={disabled}
+                    style={[styles.calendarCell, iso === today && styles.calendarCellToday, selected && styles.calendarCellSelected]}
+                    onPress={() => pick(d)}
+                  >
+                    <Text style={[styles.calendarDayNum, disabled && { color: "#cbd5e1" }, selected && { color: "#1d4ed8", fontWeight: "800" }]}>{d}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.quickRow}>
+              {(quick || [{ label: "I dag", iso: today }, { label: "I morgen", iso: addDays(today, 1) }, { label: "Om en uke", iso: addDays(today, 7) }]).map((q) => (
+                <TouchableOpacity key={q.label} style={styles.filterChip} onPress={() => { onChange(q.iso); setOpen(false); }}>
+                  <Text style={styles.filterChipText}>{q.label}</Text>
+                </TouchableOpacity>
+              ))}
+              {!!value && (
+                <TouchableOpacity style={styles.filterChip} onPress={() => { onChange(""); setOpen(false); }}>
+                  <Text style={[styles.filterChipText, { color: "#b91c1c" }]}>Tøm</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+    </>
+  );
 }
 
 function KalenderScreen({ db, onOpenBooking }) {
@@ -798,11 +1019,11 @@ function BilerScreen({ db, commitDb }) {
                 <TouchableOpacity onPress={() => setEditing(null)}><Text style={styles.closeText}>Lukk</Text></TouchableOpacity>
               </View>
               <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 40 }}>
-                <FormField label="Navn"><TextInput style={styles.input} value={editing.name} onChangeText={(t) => setEditing({ ...editing, name: t })} /></FormField>
-                <FormField label="Registreringsnummer"><TextInput style={styles.input} value={editing.regnr} onChangeText={(t) => setEditing({ ...editing, regnr: t })} autoCapitalize="characters" /></FormField>
-                <FormField label="Pris per natt (kr)"><TextInput style={styles.input} value={editing.dailyRate} onChangeText={(t) => setEditing({ ...editing, dailyRate: t })} keyboardType="numeric" /></FormField>
-                <FormField label="Helgepris per natt (kr)"><TextInput style={styles.input} value={editing.weekendRate} onChangeText={(t) => setEditing({ ...editing, weekendRate: t })} keyboardType="numeric" /></FormField>
-                <FormField label="Høysesongpris per natt (kr)"><TextInput style={styles.input} value={editing.highSeasonRate} onChangeText={(t) => setEditing({ ...editing, highSeasonRate: t })} keyboardType="numeric" /></FormField>
+                <FormField label="Navn"><TextInput style={styles.input} value={editing.name} onChangeText={(t) => setEditing({ ...editing, name: t })} placeholder="F.eks. Hobby Optima" /></FormField>
+                <FormField label="Registreringsnummer"><TextInput style={styles.input} value={editing.regnr} onChangeText={(t) => setEditing({ ...editing, regnr: t })} autoCapitalize="characters" placeholder="AB 12345" /></FormField>
+                <FormField label="Pris per natt (kr)"><TextInput style={styles.input} value={editing.dailyRate} onChangeText={(t) => setEditing({ ...editing, dailyRate: t })} keyboardType="numeric" placeholder="0" /></FormField>
+                <FormField label="Helgepris per natt (kr)"><TextInput style={styles.input} value={editing.weekendRate} onChangeText={(t) => setEditing({ ...editing, weekendRate: t })} keyboardType="numeric" placeholder="Som normalpris" /></FormField>
+                <FormField label="Høysesongpris per natt (kr)"><TextInput style={styles.input} value={editing.highSeasonRate} onChangeText={(t) => setEditing({ ...editing, highSeasonRate: t })} keyboardType="numeric" placeholder="Som normalpris" /></FormField>
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <View style={{ flex: 1 }}>
                     <FormField label="Høysesong fra (DD.MM)"><TextInput style={styles.input} value={editing.hsStart} onChangeText={(t) => setEditing({ ...editing, hsStart: t })} placeholder="15.06" /></FormField>
@@ -818,7 +1039,7 @@ function BilerScreen({ db, commitDb }) {
                     ))}
                   </View>
                 </FormField>
-                <FormField label="Notater"><TextInput style={[styles.input, { height: 80 }]} value={editing.notes} onChangeText={(t) => setEditing({ ...editing, notes: t })} multiline /></FormField>
+                <FormField label="Notater"><TextInput style={[styles.input, { height: 80 }]} value={editing.notes} onChangeText={(t) => setEditing({ ...editing, notes: t })} multiline placeholder="Valgfritt" /></FormField>
 
                 <TouchableOpacity style={styles.primaryBtn} onPress={save}><Text style={styles.primaryBtnText}>Lagre</Text></TouchableOpacity>
                 {editing.id && (
@@ -894,10 +1115,10 @@ function KunderScreen({ db, commitDb }) {
                 <TouchableOpacity onPress={() => setEditing(null)}><Text style={styles.closeText}>Lukk</Text></TouchableOpacity>
               </View>
               <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 40 }}>
-                <FormField label="Navn"><TextInput style={styles.input} value={editing.name} onChangeText={(t) => setEditing({ ...editing, name: t })} /></FormField>
-                <FormField label="Telefon"><TextInput style={styles.input} value={editing.phone} onChangeText={(t) => setEditing({ ...editing, phone: t })} keyboardType="phone-pad" /></FormField>
-                <FormField label="E-post"><TextInput style={styles.input} value={editing.email} onChangeText={(t) => setEditing({ ...editing, email: t })} autoCapitalize="none" keyboardType="email-address" /></FormField>
-                <FormField label="Notater"><TextInput style={[styles.input, { height: 80 }]} value={editing.notes} onChangeText={(t) => setEditing({ ...editing, notes: t })} multiline /></FormField>
+                <FormField label="Navn"><TextInput style={styles.input} value={editing.name} onChangeText={(t) => setEditing({ ...editing, name: t })} placeholder="Fornavn Etternavn" /></FormField>
+                <FormField label="Telefon"><TextInput style={styles.input} value={editing.phone} onChangeText={(t) => setEditing({ ...editing, phone: t })} keyboardType="phone-pad" placeholder="+47 000 00 000" /></FormField>
+                <FormField label="E-post"><TextInput style={styles.input} value={editing.email} onChangeText={(t) => setEditing({ ...editing, email: t })} autoCapitalize="none" keyboardType="email-address" placeholder="navn@epost.no" /></FormField>
+                <FormField label="Notater"><TextInput style={[styles.input, { height: 80 }]} value={editing.notes} onChangeText={(t) => setEditing({ ...editing, notes: t })} multiline placeholder="Valgfritt" /></FormField>
 
                 <TouchableOpacity style={styles.primaryBtn} onPress={save}><Text style={styles.primaryBtnText}>Lagre</Text></TouchableOpacity>
                 {editing.id && (
@@ -915,7 +1136,7 @@ function KunderScreen({ db, commitDb }) {
 /* ===================== DELT FORM-FELT ===================== */
 function FormField({ label, children }) {
   return (
-    <View style={{ marginBottom: 14 }}>
+    <View style={{ marginBottom: 12 }}>
       <Text style={styles.fieldLabel}>{label}</Text>
       {children}
     </View>
@@ -1052,10 +1273,10 @@ function KostnaderScreen({ db, commitDb }) {
             </View>
             <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 40 }}>
               <FormField label="Bil"><VehiclePicker db={db} value={editingCost.vehicleId} onChange={(id) => setEditingCost({ ...editingCost, vehicleId: id })} /></FormField>
-              <FormField label="Dato (ÅÅÅÅ-MM-DD)"><TextInput style={styles.input} value={editingCost.date} onChangeText={(t) => setEditingCost({ ...editingCost, date: t })} placeholder="2026-07-29" /></FormField>
+              <FormField label="Dato"><DateField value={editingCost.date} onChange={(d) => setEditingCost({ ...editingCost, date: d })} /></FormField>
               <FormField label="Kategori"><ChipPicker options={COST_CATEGORIES} value={editingCost.category} onChange={(c) => setEditingCost({ ...editingCost, category: c })} /></FormField>
-              <FormField label="Beløp (kr)"><TextInput style={styles.input} value={editingCost.amount} onChangeText={(t) => setEditingCost({ ...editingCost, amount: t })} keyboardType="numeric" /></FormField>
-              <FormField label="Notater"><TextInput style={[styles.input, { height: 70 }]} value={editingCost.notes} onChangeText={(t) => setEditingCost({ ...editingCost, notes: t })} multiline /></FormField>
+              <FormField label="Beløp (kr)"><TextInput style={styles.input} value={editingCost.amount} onChangeText={(t) => setEditingCost({ ...editingCost, amount: t })} keyboardType="numeric" placeholder="0" /></FormField>
+              <FormField label="Notater"><TextInput style={[styles.input, { height: 70 }]} value={editingCost.notes} onChangeText={(t) => setEditingCost({ ...editingCost, notes: t })} multiline placeholder="Valgfritt" /></FormField>
               <TouchableOpacity style={styles.primaryBtn} onPress={saveCost}><Text style={styles.primaryBtnText}>Lagre</Text></TouchableOpacity>
               {editingCost.id && <TouchableOpacity style={styles.dangerBtn} onPress={() => removeCost(editingCost.id)}><Text style={styles.dangerBtnText}>Slett</Text></TouchableOpacity>}
             </ScrollView>
@@ -1073,7 +1294,7 @@ function KostnaderScreen({ db, commitDb }) {
             <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 40 }}>
               <FormField label="Bil"><VehiclePicker db={db} value={editingFixed.vehicleId} onChange={(id) => setEditingFixed({ ...editingFixed, vehicleId: id })} /></FormField>
               <FormField label="Kategori"><ChipPicker options={FIXED_COST_CATEGORIES} value={editingFixed.category} onChange={(c) => setEditingFixed({ ...editingFixed, category: c })} /></FormField>
-              <FormField label="Beløp per måned (kr)"><TextInput style={styles.input} value={editingFixed.amountPerMonth} onChangeText={(t) => setEditingFixed({ ...editingFixed, amountPerMonth: t })} keyboardType="numeric" /></FormField>
+              <FormField label="Beløp per måned (kr)"><TextInput style={styles.input} value={editingFixed.amountPerMonth} onChangeText={(t) => setEditingFixed({ ...editingFixed, amountPerMonth: t })} keyboardType="numeric" placeholder="0" /></FormField>
               <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
                 <Switch value={editingFixed.active !== false} onValueChange={(v) => setEditingFixed({ ...editingFixed, active: v })} />
                 <Text style={[styles.fieldLabel, { marginLeft: 10 }]}>Aktiv (regnes med i dashbordet)</Text>
@@ -1337,10 +1558,10 @@ function BookingEditor({ db, commitDb, booking, onClose }) {
 
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
-              <FormField label="Hentedato (ÅÅÅÅ-MM-DD)"><TextInput style={styles.input} value={form.startDate} onChangeText={(t) => setForm({ ...form, startDate: t })} /></FormField>
+              <FormField label="Hentedato"><DateField value={form.startDate} onChange={(d) => setForm({ ...form, startDate: d, endDate: form.endDate && form.endDate <= d ? addDays(d, 1) : form.endDate })} /></FormField>
             </View>
             <View style={{ flex: 1 }}>
-              <FormField label="Returdato (ÅÅÅÅ-MM-DD)"><TextInput style={styles.input} value={form.endDate} onChangeText={(t) => setForm({ ...form, endDate: t })} /></FormField>
+              <FormField label="Returdato"><DateField value={form.endDate} minDate={form.startDate ? addDays(form.startDate, 1) : undefined} onChange={(d) => setForm({ ...form, endDate: d })} /></FormField>
             </View>
           </View>
 
@@ -1351,8 +1572,8 @@ function BookingEditor({ db, commitDb, booking, onClose }) {
           )}
           {conflict && <Text style={styles.errorText}>⚠️ Denne bilen er allerede booket i deler av denne perioden.</Text>}
 
-          <FormField label="Totalpris (kr)"><TextInput style={styles.input} value={form.totalPrice} onChangeText={(t) => setForm({ ...form, totalPrice: t, priceAuto: false })} keyboardType="numeric" /></FormField>
-          <FormField label="Depositum (kr)"><TextInput style={styles.input} value={form.deposit} onChangeText={(t) => setForm({ ...form, deposit: t })} keyboardType="numeric" /></FormField>
+          <FormField label="Totalpris (kr)"><TextInput style={styles.input} value={form.totalPrice} onChangeText={(t) => setForm({ ...form, totalPrice: t, priceAuto: false })} keyboardType="numeric" placeholder="0" /></FormField>
+          <FormField label="Depositum (kr)"><TextInput style={styles.input} value={form.deposit} onChangeText={(t) => setForm({ ...form, deposit: t })} keyboardType="numeric" placeholder="0" /></FormField>
           <FormField label="Status"><ChipPicker options={["bekreftet", "forespørsel", "avlyst"]} value={form.status} onChange={(s) => setForm({ ...form, status: s })} /></FormField>
 
           <View style={styles.checkRow}>
@@ -1364,7 +1585,7 @@ function BookingEditor({ db, commitDb, booking, onClose }) {
             <Text style={styles.fieldLabel}>Depositum innbetalt</Text>
           </View>
           {form.depositPaid && (
-            <FormField label="Dato betalt (ÅÅÅÅ-MM-DD)"><TextInput style={styles.input} value={form.depositPaidDate} onChangeText={(t) => setForm({ ...form, depositPaidDate: t })} /></FormField>
+            <FormField label="Dato betalt"><DateField value={form.depositPaidDate} onChange={(d) => setForm({ ...form, depositPaidDate: d })} /></FormField>
           )}
           <View style={styles.checkRow}>
             <Switch value={form.depositReturned} onValueChange={setDepositReturned} />
@@ -1372,23 +1593,23 @@ function BookingEditor({ db, commitDb, booking, onClose }) {
           </View>
           {form.depositReturned && (
             <>
-              <FormField label="Dato returnert (ÅÅÅÅ-MM-DD)"><TextInput style={styles.input} value={form.depositReturnedDate} onChangeText={(t) => setForm({ ...form, depositReturnedDate: t })} /></FormField>
-              <FormField label="Returnert beløp (kr)"><TextInput style={styles.input} value={form.depositReturnedAmount} onChangeText={(t) => setForm({ ...form, depositReturnedAmount: t })} keyboardType="numeric" /></FormField>
-              <FormField label="Notat depositum"><TextInput style={styles.input} value={form.depositNotes} onChangeText={(t) => setForm({ ...form, depositNotes: t })} /></FormField>
+              <FormField label="Dato returnert"><DateField value={form.depositReturnedDate} onChange={(d) => setForm({ ...form, depositReturnedDate: d })} /></FormField>
+              <FormField label="Returnert beløp (kr)"><TextInput style={styles.input} value={form.depositReturnedAmount} onChangeText={(t) => setForm({ ...form, depositReturnedAmount: t })} keyboardType="numeric" placeholder="Hele depositumet" /></FormField>
+              <FormField label="Notat depositum"><TextInput style={styles.input} value={form.depositNotes} onChangeText={(t) => setForm({ ...form, depositNotes: t })} placeholder="Valgfritt" /></FormField>
             </>
           )}
 
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
-              <FormField label="Km ved henting"><TextInput style={styles.input} value={form.kmStart} onChangeText={(t) => setForm({ ...form, kmStart: t })} keyboardType="numeric" /></FormField>
+              <FormField label="Km ved henting"><TextInput style={styles.input} value={form.kmStart} onChangeText={(t) => setForm({ ...form, kmStart: t })} keyboardType="numeric" placeholder="0" /></FormField>
             </View>
             <View style={{ flex: 1 }}>
-              <FormField label="Km ved levering"><TextInput style={styles.input} value={form.kmEnd} onChangeText={(t) => setForm({ ...form, kmEnd: t })} keyboardType="numeric" /></FormField>
+              <FormField label="Km ved levering"><TextInput style={styles.input} value={form.kmEnd} onChangeText={(t) => setForm({ ...form, kmEnd: t })} keyboardType="numeric" placeholder="0" /></FormField>
             </View>
           </View>
           {!!kmDrivenText && <Text style={styles.mutedText}>{kmDrivenText}</Text>}
 
-          <FormField label="Skaderapport / notat ved retur"><TextInput style={[styles.input, { height: 70 }]} value={form.damageNotes} onChangeText={(t) => setForm({ ...form, damageNotes: t })} multiline /></FormField>
+          <FormField label="Skaderapport / notat ved retur"><TextInput style={[styles.input, { height: 70 }]} value={form.damageNotes} onChangeText={(t) => setForm({ ...form, damageNotes: t })} multiline placeholder="Ingen skader" /></FormField>
 
           <FormField label="Skadefoto">
             <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
@@ -1402,7 +1623,7 @@ function BookingEditor({ db, commitDb, booking, onClose }) {
             </View>
           </FormField>
 
-          <FormField label="Notater"><TextInput style={[styles.input, { height: 70 }]} value={form.notes} onChangeText={(t) => setForm({ ...form, notes: t })} multiline /></FormField>
+          <FormField label="Notater"><TextInput style={[styles.input, { height: 70 }]} value={form.notes} onChangeText={(t) => setForm({ ...form, notes: t })} multiline placeholder="Valgfritt" /></FormField>
 
           <TouchableOpacity style={styles.primaryBtn} onPress={save}><Text style={styles.primaryBtnText}>Lagre</Text></TouchableOpacity>
           {!isNew && <TouchableOpacity style={styles.dangerBtn} onPress={remove}><Text style={styles.dangerBtnText}>Slett booking</Text></TouchableOpacity>}

@@ -25,11 +25,17 @@ og dukker umiddelbart opp i nettappen også, og omvendt.
 
 ## Hva appen kan gjøre
 
-- **Oversikt** — nøkkeltall (antall biler, pågår nå, neste 30 dager,
-  ubetalt depositum) og liste over kommende bookinger.
+- **Oversikt** — samme dashbord som førstesiden på nettsiden: inntekt,
+  kostnader (engangs + faste), resultat og belegg for inneværende måned,
+  de samme tallene hittil i år, søylediagram med inntekt per bil i år,
+  «⚠️ Krever oppfølging» (ubetalt leie/depositum, depositum som ikke er
+  returnert) og liste over kommende bookinger.
 - **Kalender** — månedskalender med prikker per bil på opptatte dager,
   trykk på en dag for å se/redigere bookinger den dagen.
 - **Bookinger** — full liste, filtrer på status, opprett/rediger/slett.
+- **Datofelt** — alle datoer velges med kalender (trykk på feltet), med
+  snarveier for «I dag» / «I morgen» / «Om en uke». Returdato kan ikke
+  settes før hentedato.
 - **Booking-redigering** — bil, kunde, datoer med automatisk prisforslag
   (samme prislogikk som nettsiden), konflikt-varsel ved overlapp,
   depositum betalt/returnert med dato og beløp, leie betalt, kilometerstand
