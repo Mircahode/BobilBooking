@@ -158,8 +158,13 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 12, color: "#64748b", marginTop: 2 },
   logoutText: { color: "#ef4444", fontWeight: "600" },
 
-  tabStrip: { backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
-  tabBtn: { paddingVertical: 10, paddingHorizontal: 14, marginRight: 4 },
+  tabStripWrap: {
+    height: 44, flexGrow: 0, flexShrink: 0, backgroundColor: "#fff",
+    borderBottomWidth: 1, borderBottomColor: "#e2e8f0",
+  },
+  tabStrip: { flexGrow: 0, flexShrink: 0 },
+  tabStripContent: { paddingHorizontal: 12, alignItems: "stretch" },
+  tabBtn: { justifyContent: "center", paddingHorizontal: 14, marginRight: 4 },
   tabBtnActive: { borderBottomWidth: 2, borderBottomColor: "#3b82f6" },
   tabBtnText: { color: "#64748b", fontWeight: "600", fontSize: 13 },
   tabBtnTextActive: { color: "#3b82f6" },
@@ -455,13 +460,20 @@ export default function App() {
         <TouchableOpacity onPress={doLogout}><Text style={styles.logoutText}>Logg ut</Text></TouchableOpacity>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabStrip} contentContainerStyle={{ paddingHorizontal: 12 }}>
-        {TABS.map((t) => (
-          <TouchableOpacity key={t.key} onPress={() => setActiveTab(t.key)} style={[styles.tabBtn, activeTab === t.key && styles.tabBtnActive]}>
-            <Text style={[styles.tabBtnText, activeTab === t.key && styles.tabBtnTextActive]}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.tabStripWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabStrip}
+          contentContainerStyle={styles.tabStripContent}
+        >
+          {TABS.map((t) => (
+            <TouchableOpacity key={t.key} onPress={() => setActiveTab(t.key)} style={[styles.tabBtn, activeTab === t.key && styles.tabBtnActive]}>
+              <Text style={[styles.tabBtnText, activeTab === t.key && styles.tabBtnTextActive]}>{t.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       <View style={{ flex: 1 }}>
         {activeTab === "oversikt" && <OversiktScreen db={db} onOpenBooking={setEditingBooking} onGoTab={setActiveTab} />}
@@ -912,7 +924,12 @@ function BookingerScreen({ db, onOpenBooking }) {
 
   return (
     <View style={styles.screen}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0, flexShrink: 0, marginBottom: 4 }}
+        contentContainerStyle={{ alignItems: "center" }}
+      >
         {BOOKING_FILTERS.map((f) => (
           <TouchableOpacity key={f.key} onPress={() => setFilter(f.key)} style={[styles.filterChip, filter === f.key && styles.filterChipActive]}>
             <Text style={[styles.filterChipText, filter === f.key && styles.filterChipTextActive]}>{f.label}</Text>
