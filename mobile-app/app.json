@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Bobil Booking",
+    "slug": "bobil-booking-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "no.bobilbooking.app"
+    },
+    "android": {
+      "package": "no.bobilbooking.app"
+    }
+  }
+}
