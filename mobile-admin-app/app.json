@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Bobil Booking — Admin",
+    "slug": "bobil-booking-admin",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "no.bobilbooking.admin",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Appen trenger tilgang til bilder for å legge til skadefoto på bookinger."
+      }
+    },
+    "android": {
+      "package": "no.bobilbooking.admin",
+      "permissions": ["READ_MEDIA_IMAGES"]
+    }
+  }
+}
