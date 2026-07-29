@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<title>Bobil Booking</title>
+
+<!-- ===== PWA: gjør denne siden installerbar som app på hjemskjermen ===== -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3b82f6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Bobil">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --bg:#f1f5f9; --card:#ffffff; --border:#e2e8f0; --line:#f1f5f9;
+    --text:#0f172a; --muted:#64748b; --faint:#94a3b8;
+    --blue:#3b82f6; --green:#16a34a; --red:#dc2626; --amber:#a16207;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%; overscroll-behavior-y:none;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); font-size:16px;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit; cursor:pointer;}
+  input,select,textarea{font-family:inherit; font-size:16px;}
+
+  /* ---------- LOGIN ---------- */
+  #login-overlay{
+    position:fixed; inset:0; z-index:200; background:var(--bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:32px 24px calc(32px + var(--safe-bottom));
+  }
+  #login-overlay .logo{font-size:56px; margin-bottom:4px;}
+  #login-overlay h1{font-size:22px; margin:0 0 4px;}
+  #login-overlay p{color:var(--muted); font-size:14px; margin:0 0 24px; text-align:center;}
+  #login-overlay .box{width:100%; max-width:340px;}
+
+  /* ---------- APP SHELL ---------- */
+  #app-root{display:none; flex-direction:column; height:100%;}
+  #app-root.on{display:flex;}
+
+  header{
+    background:var(--card); border-bottom:1px solid var(--border);
+    padding:calc(10px + var(--safe-top)) 16px 10px;
+    display:flex; align-items:center; justify-content:space-between; flex:0 0 auto;
+  }
+  header .title{font-size:17px; font-weight:700; line-height:1.2;}
+  header .sub{font-size:11px; color:var(--muted); margin-top:1px;}
+  header button{
+    background:none; border:none; color:var(--red); font-weight:600; font-size:14px; padding:6px;
+  }
+
+  main{
+    flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    padding:12px 12px calc(20px + var(--safe-bottom));
+  }
+
+  /* ---------- BUNNMENY ---------- */
+  nav{
+    flex:0 0 auto; background:var(--card); border-top:1px solid var(--border);
+    display:flex; padding-bottom:var(--safe-bottom);
+  }
+  nav button{
+    flex:1; background:none; border:none; padding:7px 2px 5px;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    color:var(--muted); font-size:10px; font-weight:600; position:relative;
+  }
+  nav button .ic{font-size:20px; line-height:1;}
+  nav button.active{color:var(--blue);}
+  nav .badge{
+    position:absolute; top:2px; right:calc(50% - 20px);
+    background:var(--red); color:#fff; font-size:10px; font-weight:700;
+    min-width:17px; height:17px; border-radius:9px; padding:0 4px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  /* ---------- BYGGEKLOSSER ---------- */
+  h2.section{font-size:15px; font-weight:700; margin:2px 0 8px;}
+  .panel{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px;}
+  .panel h3{font-size:14px; font-weight:700; margin:0 0 8px;}
+  .muted{color:var(--muted); font-size:13px;}
+  .faint{color:var(--faint); font-size:12px;}
+  .empty{color:var(--muted); font-size:13px; text-align:center; padding:16px 0;}
+
+  .kpis{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;}
+  .kpi{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 11px;}
+  .kpi .lbl{font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px;}
+  .kpi .val{font-size:20px; font-weight:800; margin-top:2px; white-space:nowrap;}
+  .kpi .sub{font-size:11px; color:var(--faint); margin-top:1px;}
+  .val.green{color:var(--green);} .val.red{color:var(--red);}
+
+  .bar-row{margin-bottom:9px;}
+  .bar-top{display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:3px;}
+  .bar-track{height:8px; background:var(--line); border-radius:4px; overflow:hidden;}
+  .bar-fill{height:100%; border-radius:4px;}
+
+  .row{
+    display:flex; align-items:flex-start; gap:10px; padding:10px 0;
+    border-top:1px solid var(--line);
+  }
+  .row:first-child{border-top:none;}
+  .row .grow{flex:1; min-width:0;}
+  .row .t{font-size:14px; font-weight:700;}
+  .row .s{font-size:12px; color:var(--muted); margin-top:2px;}
+  .row .chev{color:var(--blue); font-weight:600; font-size:13px; white-space:nowrap; align-self:center;}
+  .row.tappable:active{background:var(--line);}
+
+  .pill{
+    display:inline-block; padding:3px 8px; border-radius:20px;
+    font-size:11px; font-weight:700; white-space:nowrap;
+  }
+  .p-ok{background:#dcfce7; color:#15803d;}
+  .p-warn{background:#fef9c3; color:#a16207;}
+  .p-bad{background:#fee2e2; color:#b91c1c;}
+  .p-off{background:#e2e8f0; color:#64748b;}
+  .pills{display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;}
+
+  .chips{display:flex; gap:7px; overflow-x:auto; padding-bottom:8px; -webkit-overflow-scrolling:touch;}
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{
+    flex:0 0 auto; border:1px solid #cbd5e1; background:var(--card); color:#334155;
+    border-radius:20px; padding:7px 13px; font-size:13px; font-weight:600;
+  }
+  .chip.on{background:var(--blue); border-color:var(--blue); color:#fff;}
+
+  .btn{
+    display:block; width:100%; border:none; border-radius:10px;
+    padding:13px; font-size:15px; font-weight:700; text-align:center; margin-top:4px;
+  }
+  .btn-primary{background:var(--blue); color:#fff;}
+  .btn-danger{background:#fee2e2; color:#b91c1c;}
+  .btn-ok{background:#dcfce7; color:#15803d;}
+  .btn-ghost{background:var(--line); color:#334155;}
+  .btn-sm{padding:9px; font-size:14px; margin-top:0;}
+  .btn:disabled{opacity:.5;}
+  .btn-pair{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;}
+
+  /* ---------- SKJEMA ---------- */
+  .field{margin-bottom:12px;}
+  .field > label{display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:5px;}
+  .field input, .field select, .field textarea{
+    width:100%; border:1px solid #cbd5e1; border-radius:8px;
+    padding:11px 12px; background:var(--card); color:var(--text);
+    -webkit-appearance:none; appearance:none;
+  }
+  .field input[type="date"]{min-height:44px;}
+  .field textarea{min-height:70px; resize:vertical;}
+  .field select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='2' fill='none' stroke-linecap='round'/></svg>"); background-repeat:no-repeat; background-position:right 12px center; padding-right:34px;}
+  .field-2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .check{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
+  .check input{width:auto; -webkit-appearance:auto; appearance:auto; transform:scale(1.3); margin:0 2px;}
+  .check label{font-size:14px; font-weight:600; color:#334155; margin:0;}
+  .hint{font-size:12px; color:var(--muted); margin:-6px 0 12px;}
+  .hint.warn{color:var(--red); font-weight:600;}
+
+  .swatches{display:flex; flex-wrap:wrap; gap:9px;}
+  .swatch{width:34px; height:34px; border-radius:17px; border:3px solid transparent;}
+  .swatch.on{border-color:var(--text);}
+
+  /* ---------- MODAL ---------- */
+  .modal{
+    position:fixed; inset:0; z-index:150; background:var(--bg);
+    display:none; flex-direction:column;
+  }
+  .modal.on{display:flex;}
+  .modal .mhead{
+    flex:0 0 auto; background:var(--card); border-bottom:1px solid var(--border);
+    padding:calc(12px + var(--safe-top)) 14px 12px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .modal .mhead h3{font-size:16px; font-weight:700; margin:0; flex:1; min-width:0;}
+  .modal .mhead button{background:none; border:none; color:var(--blue); font-weight:600; font-size:15px; padding:4px;}
+  .modal .mbody{flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 14px calc(28px + var(--safe-bottom));}
+
+  /* ---------- KALENDER ---------- */
+  .cal-nav{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+  .cal-nav button{background:none; border:none; color:var(--blue); font-size:26px; font-weight:700; padding:0 18px; line-height:1;}
+  .cal-nav .m{font-size:16px; font-weight:700;}
+  .cal-wd{display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:2px;}
+  .cal-wd span{text-align:center; font-size:11px; font-weight:600; color:var(--muted);}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:2px;}
+  .cal-cell{
+    aspect-ratio:1; border-radius:7px; background:var(--card); border:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    padding-top:4px; gap:2px; font-size:13px; font-weight:600;
+  }
+  .cal-cell.blank{background:transparent; border-color:transparent;}
+  .cal-cell.today{background:#fef9c3;}
+  .cal-cell.sel{background:#dbeafe; border-color:var(--blue);}
+  .cal-dots{display:flex; gap:2px; flex-wrap:wrap; justify-content:center;}
+  .cal-dot{width:5px; height:5px; border-radius:3px;}
+
+  /* ---------- SKADEBILDER ---------- */
+  .thumbs{display:flex; flex-wrap:wrap; gap:8px;}
+  .thumb{position:relative; width:76px; height:76px;}
+  .thumb img{width:100%; height:100%; object-fit:cover; border-radius:8px; background:var(--line);}
+  .thumb button{
+    position:absolute; top:-6px; right:-6px; width:22px; height:22px; border-radius:11px;
+    background:var(--red); color:#fff; border:none; font-size:13px; line-height:1; padding:0;
+  }
+  .addphoto{
+    width:76px; height:76px; border-radius:8px; border:1px dashed #cbd5e1;
+    background:var(--card); color:var(--muted); font-size:24px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  /* ---------- TOAST ---------- */
+  #toast{
+    position:fixed; left:50%; transform:translateX(-50%);
+    bottom:calc(80px + var(--safe-bottom)); z-index:300;
+    background:#0f172a; color:#fff; padding:11px 18px; border-radius:24px;
+    font-size:14px; font-weight:600; max-width:88%; text-align:center;
+    opacity:0; pointer-events:none; transition:opacity .2s;
+  }
+  #toast.on{opacity:.95;}
+</style>
+</head>
+<body>
+
+<!-- ===================== INNLOGGING ===================== -->
+<div id="login-overlay">
+  <div class="logo">🚐</div>
+  <h1>Bobil Booking</h1>
+  <p id="login-status">Sjekker innlogging …</p>
+  <div class="box">
+    <div class="field">
+      <label for="login-password">Passord</label>
+      <input type="password" id="login-password" autocomplete="current-password" placeholder="Ditt passord">
+    </div>
+    <div class="hint warn" id="login-error" style="display:none"></div>
+    <button class="btn btn-primary" id="login-btn">Logg inn</button>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app-root">
+  <header>
+    <div>
+      <div class="title">🚐 Bobil Booking</div>
+      <div class="sub" id="sync-status">Admin</div>
+    </div>
+    <button id="logout-btn">Logg ut</button>
+  </header>
+
+  <main id="content"></main>
+
+  <nav id="tabbar">
+    <button data-tab="oversikt"  class="active"><span class="ic">📊</span>Oversikt</button>
+    <button data-tab="kalender"><span class="ic">🗓️</span>Kalender</button>
+    <button data-tab="bookinger"><span class="ic">📋</span>Bookinger</button>
+    <button data-tab="biler"><span class="ic">🚐</span>Biler</button>
+    <button data-tab="mer"><span class="ic">⋯</span>Mer<span class="badge" id="req-badge" style="display:none">0</span></button>
+  </nav>
+</div>
+
+<!-- ===================== MODALER ===================== -->
+<div class="modal" id="modal">
+  <div class="mhead">
+    <h3 id="modal-title">Rediger</h3>
+    <button id="modal-close">Lukk</button>
+  </div>
+  <div class="mbody" id="modal-body"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* =========================================================================
+   Bobil Booking — mobil admin (PWA)
+   Samme Supabase-database og samme datamodell som bobil_booking.html.
+   ========================================================================= */
+
+const SUPABASE_URL = "https://kydkjszbgdgvvkiicftg.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_maTxWGDwgcVBnpaCLNKGFA_UmrrPGLx";
+const AUTH_EMAIL = "steffen.skaar@gmail.com";
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true }
+});
+
+const STORAGE_KEY = "bobilBookingData_v1";
+let DB = { vehicles: [], customers: [], bookings: [], costs: [], fixedCosts: [], settings: {} };
+let saveTimer = null;
+let currentTab = "oversikt";
+
+/* ===================== DATALAG ===================== */
+function setSyncStatus(t){ const el = document.getElementById("sync-status"); if(el) el.textContent = t; }
+
+function applyMigrations(){
+  if(!DB.fixedCosts) DB.fixedCosts = [];
+  if(!DB.settings) DB.settings = {};
+  ["vehicles","customers","bookings","costs"].forEach(k=>{ if(!DB[k]) DB[k] = []; });
+  DB.bookings.forEach(b=>{
+    if(b.depositPaid === undefined) b.depositPaid = false;
+    if(b.depositReturned === undefined) b.depositReturned = false;
+    if(b.rentPaid === undefined) b.rentPaid = false;
+    if(b.damageImages === undefined) b.damageImages = [];
+  });
+}
+
+function loadLocal(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw){ try{ DB = JSON.parse(raw); }catch(e){ console.error(e); } }
+  applyMigrations();
+}
+
+function saveData(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); }
+  catch(e){ console.error(e); }
+  setSyncStatus("Lagrer …");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(pushToCloud, 600);
+}
+
+async function pushToCloud(){
+  try{
+    const { data: s } = await supabaseClient.auth.getSession();
+    const userId = s && s.session ? s.session.user.id : null;
+    if(!userId) return;
+    const { error } = await supabaseClient.from("app_state").upsert(
+      { user_id: userId, data: DB, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" }
+    );
+    if(error) throw error;
+    setSyncStatus("☁️ Lagret i skyen");
+    syncPublicData();
+  }catch(e){
+    console.error(e);
+    setSyncStatus("⚠️ Lagret lokalt (ingen nettforbindelse?)");
+  }
+}
+
+async function syncPublicData(){
+  try{
+    const { data: s } = await supabaseClient.auth.getSession();
+    if(!s || !s.session) return;
+    if(DB.vehicles.length > 0){
+      await supabaseClient.from("public_vehicles").upsert(DB.vehicles.map(v=>({
+        id: v.id, name: v.name, regnr: v.regnr||"",
+        daily_rate: v.dailyRate||0, weekend_rate: v.weekendRate||0,
+        high_season_rate: v.highSeasonRate||0,
+        hs_start: v.hsStart||"", hs_end: v.hsEnd||"",
+        color: v.color||"#3b82f6", notes: v.notes||""
+      })));
+    }
+    const ids = DB.vehicles.map(v=>v.id);
+    if(ids.length > 0){
+      await supabaseClient.from("public_vehicles").delete()
+        .not("id","in","("+ids.map(id=>'"'+id+'"').join(",")+")");
+    } else {
+      await supabaseClient.from("public_vehicles").delete().neq("id","__never__");
+    }
+    await supabaseClient.from("public_bookings").delete().neq("id","__never__");
+    const active = DB.bookings.filter(b=>b.status!=="avlyst");
+    if(active.length > 0){
+      await supabaseClient.from("public_bookings").insert(active.map(b=>({
+        id: b.id, vehicle_id: b.vehicleId, start_date: b.startDate, end_date: b.endDate
+      })));
+    }
+  }catch(e){ console.error("syncPublicData feilet:", e); }
+}
+
+async function pullFromCloud(){
+  try{
+    const { data: s } = await supabaseClient.auth.getSession();
+    const userId = s && s.session ? s.session.user.id : null;
+    if(!userId) return false;
+    const { data, error } = await supabaseClient.from("app_state")
+      .select("data").eq("user_id", userId).maybeSingle();
+    if(error) throw error;
+    if(data && data.data){
+      DB = data.data;
+      applyMigrations();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+      setSyncStatus("☁️ Synkronisert");
+    } else {
+      await pushToCloud();
+      setSyncStatus("☁️ Tilkoblet");
+    }
+    return true;
+  }catch(e){
+    console.error(e);
+    setSyncStatus("⚠️ Offline — viser lagret data");
+    return false;
+  }
+}
+
+/* ===================== HJELPERE ===================== */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmtKr(n){ return (Math.round(n||0)).toLocaleString("nb-NO") + " kr"; }
+function fmtDate(d){ if(!d) return "—"; return new Date(d+"T00:00:00").toLocaleDateString("nb-NO",{day:"2-digit",month:"2-digit",year:"numeric"}); }
+function toISO(date){ const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,"0"), d=String(date.getDate()).padStart(2,"0"); return y+"-"+m+"-"+d; }
+function todayISO(){ return toISO(new Date()); }
+function addDays(dateStr, n){ const d = new Date(dateStr+"T00:00:00"); d.setDate(d.getDate()+n); return toISO(d); }
+function nightsBetween(start, end){
+  const s = new Date(start+"T00:00:00"), e = new Date(end+"T00:00:00");
+  return Math.round((e-s)/86400000);
+}
+function isWeekendNight(dateStr){ const day = new Date(dateStr+"T00:00:00").getDay(); return day===5 || day===6; }
+function isHighSeason(dateStr, vehicle){
+  if(!vehicle.hsStart || !vehicle.hsEnd) return false;
+  const date = new Date(dateStr+"T00:00:00");
+  const mmdd = (date.getMonth()+1)*100 + date.getDate();
+  const parse = (s)=>{ const p = s.split("."); return parseInt(p[1],10)*100 + parseInt(p[0],10); };
+  const a = parse(vehicle.hsStart), b = parse(vehicle.hsEnd);
+  return a <= b ? (mmdd >= a && mmdd <= b) : (mmdd >= a || mmdd <= b);
+}
+function calcPrice(vehicle, start, end){
+  const n = nightsBetween(start, end);
+  let total = 0, counts = {high:0, weekend:0, normal:0};
+  for(let i=0;i<n;i++){
+    const night = addDays(start, i);
+    if(isHighSeason(night, vehicle) && vehicle.highSeasonRate){ total += vehicle.highSeasonRate; counts.high++; }
+    else if(isWeekendNight(night) && vehicle.weekendRate){ total += vehicle.weekendRate; counts.weekend++; }
+    else { total += (vehicle.dailyRate||0); counts.normal++; }
+  }
+  const parts = [];
+  if(counts.high) parts.push(counts.high+" natt høysesong à "+fmtKr(vehicle.highSeasonRate));
+  if(counts.weekend) parts.push(counts.weekend+" natt helg à "+fmtKr(vehicle.weekendRate));
+  if(counts.normal) parts.push(counts.normal+" natt normal à "+fmtKr(vehicle.dailyRate));
+  return { total, nights: n, breakdown: parts.join(", ") || "Ingen netter valgt" };
+}
+function overlaps(aStart, aEnd, bStart, bEnd){ return aStart < bEnd && bStart < aEnd; }
+function vehicleById(id){ return DB.vehicles.find(v=>v.id===id); }
+function customerById(id){ return DB.customers.find(c=>c.id===id); }
+function bookingById(id){ return DB.bookings.find(b=>b.id===id); }
+function totalMonthlyFixedCosts(){
+  return DB.fixedCosts.filter(f=>f.active!==false).reduce((s,f)=>s+Number(f.amountPerMonth||0),0);
+}
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t.classList.remove("on"), 2600);
+}
+
+const COST_CATEGORIES = ["Service/vedlikehold","Forsikring","Vask/rens","Parkering/oppstalling","Drivstoff/gass","EU-kontroll","Avgifter","Annet"];
+const FIXED_COST_CATEGORIES = ["Lån/finansiering","Forsikring","Oppstalling/parkering","Veihjelp/medlemskap","Annet fast"];
+const VEHICLE_COLORS = ["#3b82f6","#ef4444","#22c55e","#f59e0b","#a855f7","#06b6d4","#ec4899","#64748b"];
+const NB_MONTHS = ["Januar","Februar","Mars","April","Mai","Juni","Juli","August","September","Oktober","November","Desember"];
+const NB_WEEKDAYS = ["Man","Tir","Ons","Tor","Fre","Lør","Søn"];
+
+function statusPill(s){
+  if(s==="bekreftet") return '<span class="pill p-ok">Bekreftet</span>';
+  if(s==="avlyst")    return '<span class="pill p-bad">Avlyst</span>';
+  return '<span class="pill p-warn">Forespørsel</span>';
+}
+function depositPill(b){
+  if(!b.deposit) return '<span class="pill p-off">Depositum: ingen</span>';
+  if(b.depositReturned) return '<span class="pill p-ok">Depositum returnert</span>';
+  if(b.depositPaid) return '<span class="pill p-warn">Depositum ikke returnert</span>';
+  return '<span class="pill p-bad">Depositum ikke betalt</span>';
+}
+function rentPill(b){
+  return b.rentPaid ? '<span class="pill p-ok">Leie betalt</span>' : '<span class="pill p-bad">Leie ubetalt</span>';
+}
+function bookingRow(b){
+  const v = vehicleById(b.vehicleId), c = customerById(b.customerId);
+  return '<div class="row tappable" data-open-booking="'+b.id+'">'+
+    '<div class="grow">'+
+      '<div class="t">'+esc(v?v.name:"Ukjent bil")+'</div>'+
+      '<div class="s">'+esc(c?c.name:"Ukjent kunde")+' · '+fmtDate(b.startDate)+' – '+fmtDate(b.endDate)+'</div>'+
+      '<div class="pills">'+statusPill(b.status)+'<span class="pill p-off">'+fmtKr(b.totalPrice)+'</span></div>'+
+    '</div><div class="chev">›</div></div>';
+}
+
+
+/* ===================== NAVIGASJON ===================== */
+const SUBVIEWS = { kunder:"Kunder", kostnader:"Kostnader", foresporsler:"Forespørsler" };
+
+function setTab(tab){
+  currentTab = tab;
+  const navTab = SUBVIEWS[tab] ? "mer" : tab;
+  document.querySelectorAll("#tabbar button").forEach(b=>{
+    b.classList.toggle("active", b.dataset.tab === navTab);
+  });
+  document.getElementById("content").scrollTop = 0;
+  render();
+}
+
+function render(){
+  const c = document.getElementById("content");
+  if(currentTab === "oversikt")      c.innerHTML = viewOversikt();
+  else if(currentTab === "kalender") { c.innerHTML = viewKalender(); wireKalender(); }
+  else if(currentTab === "bookinger")c.innerHTML = viewBookinger();
+  else if(currentTab === "biler")    c.innerHTML = viewBiler();
+  else if(currentTab === "kunder")   c.innerHTML = viewKunder();
+  else if(currentTab === "kostnader")c.innerHTML = viewKostnader();
+  else if(currentTab === "foresporsler"){ c.innerHTML = '<div class="panel"><p class="empty">Laster forespørsler …</p></div>'; loadRequests(); }
+  else                               c.innerHTML = viewMer();
+  wireCommon();
+}
+
+/* Delegerte klikk som gjelder alle visninger */
+function wireCommon(){
+  const c = document.getElementById("content");
+  c.querySelectorAll("[data-open-booking]").forEach(el=>{
+    el.onclick = ()=> openBookingModal(el.dataset.openBooking);
+  });
+  c.querySelectorAll("[data-goto]").forEach(el=>{
+    el.onclick = ()=> setTab(el.dataset.goto);
+  });
+  c.querySelectorAll("[data-new-booking]").forEach(el=>{ el.onclick = ()=> openBookingModal(null); });
+  c.querySelectorAll("[data-edit-vehicle]").forEach(el=>{ el.onclick = ()=> openVehicleModal(el.dataset.editVehicle || null); });
+  c.querySelectorAll("[data-edit-customer]").forEach(el=>{ el.onclick = ()=> openCustomerModal(el.dataset.editCustomer || null); });
+  c.querySelectorAll("[data-edit-cost]").forEach(el=>{ el.onclick = ()=> openCostModal(el.dataset.editCost || null); });
+  c.querySelectorAll("[data-edit-fixed]").forEach(el=>{ el.onclick = ()=> openFixedModal(el.dataset.editFixed || null); });
+}
+
+/* ===================== OVERSIKT ===================== */
+function viewOversikt(){
+  const today = todayISO();
+  const now = new Date(), y = now.getFullYear();
+  const monthStart = y + "-" + String(now.getMonth()+1).padStart(2,"0") + "-01";
+  const nextMonth = now.getMonth() === 11 ? (y+1)+"-01-01" : y + "-" + String(now.getMonth()+2).padStart(2,"0") + "-01";
+  const yearStart = y + "-01-01", nextYear = (y+1) + "-01-01";
+  const inMonth = d => d >= monthStart && d < nextMonth;
+  const inYear  = d => d >= yearStart && d < nextYear;
+
+  const confirmed = DB.bookings.filter(b=>b.status === "bekreftet");
+  const monthRevenue = confirmed.filter(b=>inMonth(b.startDate)).reduce((s,b)=>s+Number(b.totalPrice||0),0);
+  const yearRevenue  = confirmed.filter(b=>inYear(b.startDate)).reduce((s,b)=>s+Number(b.totalPrice||0),0);
+  const monthFixed = totalMonthlyFixedCosts();
+  const yearFixed  = monthFixed * (now.getMonth()+1);
+  const monthOneOff = DB.costs.filter(k=>inMonth(k.date)).reduce((s,k)=>s+Number(k.amount||0),0);
+  const yearOneOff  = DB.costs.filter(k=>inYear(k.date)).reduce((s,k)=>s+Number(k.amount||0),0);
+  const monthCosts = monthOneOff + monthFixed, yearCosts = yearOneOff + yearFixed;
+  const monthProfit = monthRevenue - monthCosts, yearProfit = yearRevenue - yearCosts;
+
+  const daysInMonth = new Date(y, now.getMonth()+1, 0).getDate();
+  const totalAvailable = DB.vehicles.length * daysInMonth;
+  let bookedNights = 0;
+  confirmed.forEach(b=>{
+    const s = b.startDate > monthStart ? b.startDate : monthStart;
+    const e = b.endDate   < nextMonth  ? b.endDate   : nextMonth;
+    if(e > s) bookedNights += nightsBetween(s, e);
+  });
+  const occupancy = totalAvailable > 0 ? Math.round((bookedNights/totalAvailable)*100) : 0;
+
+  const upcoming = DB.bookings.filter(b=>b.status!=="avlyst" && b.endDate >= today)
+    .sort((a,b)=>a.startDate.localeCompare(b.startDate)).slice(0,6);
+
+  const attention = DB.bookings.filter(b=>{
+    if(b.status === "avlyst") return false;
+    const dep = b.deposit > 0 && !b.depositPaid && b.startDate <= addDays(today,7) && b.startDate >= today;
+    const ret = b.deposit > 0 && b.depositPaid && !b.depositReturned && b.endDate <= today;
+    const rent = !b.rentPaid && b.startDate <= today;
+    return dep || ret || rent;
+  }).sort((a,b)=>a.endDate.localeCompare(b.endDate));
+
+  const perVehicle = DB.vehicles.map(v=>({
+    v, rev: confirmed.filter(b=>b.vehicleId===v.id && inYear(b.startDate)).reduce((s,b)=>s+Number(b.totalPrice||0),0)
+  })).sort((a,b)=>b.rev-a.rev);
+  const maxRev = Math.max(1, ...perVehicle.map(r=>r.rev));
+
+  const kpi = (lbl, val, sub, cls) =>
+    '<div class="kpi"><div class="lbl">'+lbl+'</div><div class="val '+(cls||"")+'">'+val+'</div>'+
+    (sub ? '<div class="sub">'+sub+'</div>' : '')+'</div>';
+
+  let html = '<h2 class="section">Denne måneden</h2><div class="kpis">'+
+    kpi("Inntekt", fmtKr(monthRevenue), "Bekreftede bookinger", "green")+
+    kpi("Kostnader", fmtKr(monthCosts), "herav "+fmtKr(monthFixed)+" faste", "red")+
+    kpi("Resultat", fmtKr(monthProfit), "", monthProfit>=0?"green":"red")+
+    kpi("Belegg", occupancy+"%", bookedNights+" av "+totalAvailable+" netter")+
+  '</div>';
+
+  html += '<h2 class="section">Hittil i år ('+y+')</h2><div class="kpis">'+
+    kpi("Inntekt i år", fmtKr(yearRevenue), "", "green")+
+    kpi("Kostnader i år", fmtKr(yearCosts), "herav "+fmtKr(yearFixed)+" faste", "red")+
+    kpi("Resultat i år", fmtKr(yearProfit), "", yearProfit>=0?"green":"red")+
+    kpi("Antall biler", String(DB.vehicles.length), DB.customers.length+" kunder")+
+  '</div>';
+
+  html += '<div class="panel"><h3>Inntekt per bil i år</h3>' +
+    (perVehicle.length === 0 ? '<p class="empty">Ingen biler lagt til ennå.</p>' :
+      perVehicle.map(r=>
+        '<div class="bar-row"><div class="bar-top"><span>'+esc(r.v.name)+'</span><span>'+fmtKr(r.rev)+'</span></div>'+
+        '<div class="bar-track"><div class="bar-fill" style="width:'+((r.rev/maxRev)*100)+'%;background:'+esc(r.v.color||"#3b82f6")+'"></div></div></div>'
+      ).join("")) + '</div>';
+
+  html += '<div class="panel"><h3>⚠️ Krever oppfølging</h3>' +
+    (attention.length === 0 ? '<p class="empty">Ingen åpne saker akkurat nå. 🎉</p>' :
+      attention.map(b=>{
+        const v = vehicleById(b.vehicleId), c = customerById(b.customerId);
+        return '<div class="row tappable" data-open-booking="'+b.id+'"><div class="grow">'+
+          '<div class="t">'+esc(v?v.name:"Ukjent bil")+' — '+esc(c?c.name:"Ukjent")+'</div>'+
+          '<div class="s">'+fmtDate(b.startDate)+' – '+fmtDate(b.endDate)+'</div>'+
+          '<div class="pills">'+rentPill(b)+depositPill(b)+'</div>'+
+        '</div><div class="chev">›</div></div>';
+      }).join("")) + '</div>';
+
+  html += '<div class="panel"><h3>Kommende bookinger</h3>' +
+    (upcoming.length === 0 ? '<p class="empty">Ingen kommende bookinger.</p>' : upcoming.map(bookingRow).join("")) +
+    '</div>';
+
+  html += '<button class="btn btn-primary" data-new-booking>+ Ny booking</button>';
+  return html;
+}
+
+/* ===================== KALENDER ===================== */
+let calCursor = { y: new Date().getFullYear(), m: new Date().getMonth() };
+let calSelected = null;
+
+function monthGrid(year, month){
+  const first = new Date(year, month, 1);
+  const offset = (first.getDay()+6) % 7;
+  const days = new Date(year, month+1, 0).getDate();
+  const cells = [];
+  for(let i=0;i<offset;i++) cells.push(null);
+  for(let d=1; d<=days; d++) cells.push(d);
+  while(cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+
+function viewKalender(){
+  const cells = monthGrid(calCursor.y, calCursor.m);
+  const today = todayISO();
+  const active = DB.bookings.filter(b=>b.status!=="avlyst");
+
+  let html = '<div class="panel"><div class="cal-nav">'+
+    '<button id="cal-prev">‹</button><span class="m">'+NB_MONTHS[calCursor.m]+' '+calCursor.y+'</span>'+
+    '<button id="cal-next">›</button></div>'+
+    '<div class="cal-wd">'+NB_WEEKDAYS.map(w=>'<span>'+w+'</span>').join("")+'</div><div class="cal-grid">';
+
+  cells.forEach((d,i)=>{
+    if(d === null){ html += '<div class="cal-cell blank"></div>'; return; }
+    const iso = toISO(new Date(calCursor.y, calCursor.m, d));
+    const onDay = active.filter(b=> iso >= b.startDate && iso < b.endDate);
+    const dots = onDay.slice(0,4).map(b=>{
+      const v = vehicleById(b.vehicleId);
+      return '<span class="cal-dot" style="background:'+esc(v && v.color ? v.color : "#3b82f6")+'"></span>';
+    }).join("");
+    const cls = "cal-cell" + (iso === today ? " today" : "") + (iso === calSelected ? " sel" : "");
+    html += '<div class="'+cls+'" data-day="'+iso+'"><span>'+d+'</span><span class="cal-dots">'+dots+'</span></div>';
+  });
+  html += '</div></div>';
+
+  if(calSelected){
+    const onDay = active.filter(b=> calSelected >= b.startDate && calSelected < b.endDate);
+    html += '<div class="panel"><h3>'+fmtDate(calSelected)+'</h3>'+
+      (onDay.length === 0 ? '<p class="empty">Ingen bookinger denne dagen.</p>' : onDay.map(bookingRow).join(""))+
+      '</div>';
+  } else {
+    html += '<p class="muted" style="text-align:center">Trykk på en dag for å se bookingene.</p>';
+  }
+  html += '<button class="btn btn-primary" data-new-booking>+ Ny booking</button>';
+  return html;
+}
+
+function wireKalender(){
+  const prev = document.getElementById("cal-prev"), next = document.getElementById("cal-next");
+  if(prev) prev.onclick = ()=>{ const d = new Date(calCursor.y, calCursor.m-1, 1); calCursor = {y:d.getFullYear(), m:d.getMonth()}; render(); };
+  if(next) next.onclick = ()=>{ const d = new Date(calCursor.y, calCursor.m+1, 1); calCursor = {y:d.getFullYear(), m:d.getMonth()}; render(); };
+  document.querySelectorAll("[data-day]").forEach(el=>{
+    el.onclick = ()=>{ calSelected = (calSelected === el.dataset.day) ? null : el.dataset.day; render(); };
+  });
+}
+
+/* ===================== BOOKINGER ===================== */
+let bookingFilter = "alle";
+const BOOKING_FILTERS = [
+  {k:"alle", l:"Alle"}, {k:"bekreftet", l:"Bekreftet"},
+  {k:"forespørsel", l:"Forespørsel"}, {k:"avlyst", l:"Avlyst"}
+];
+
+function viewBookinger(){
+  const list = DB.bookings
+    .filter(b=> bookingFilter === "alle" || b.status === bookingFilter)
+    .sort((a,b)=> b.startDate.localeCompare(a.startDate));
+
+  let html = '<div class="chips">'+BOOKING_FILTERS.map(f=>
+    '<button class="chip'+(bookingFilter===f.k?" on":"")+'" data-filter="'+f.k+'">'+f.l+'</button>').join("")+'</div>';
+  html += '<button class="btn btn-primary" style="margin-bottom:10px" data-new-booking>+ Ny booking</button>';
+  html += '<div class="panel">'+
+    (list.length === 0 ? '<p class="empty">Ingen bookinger her.</p>' : list.map(bookingRow).join(""))+'</div>';
+  setTimeout(()=>{
+    document.querySelectorAll("[data-filter]").forEach(el=>{
+      el.onclick = ()=>{ bookingFilter = el.dataset.filter; render(); };
+    });
+  }, 0);
+  return html;
+}
+
+/* ===================== BILER ===================== */
+function viewBiler(){
+  let html = '<button class="btn btn-primary" style="margin-bottom:10px" data-edit-vehicle>+ Ny bil</button><div class="panel">';
+  if(DB.vehicles.length === 0){
+    html += '<p class="empty">Ingen biler ennå. Legg til din første bobil.</p>';
+  } else {
+    html += DB.vehicles.map(v=>
+      '<div class="row tappable" data-edit-vehicle="'+v.id+'">'+
+        '<div style="width:12px;height:12px;border-radius:6px;margin-top:5px;background:'+esc(v.color||"#3b82f6")+'"></div>'+
+        '<div class="grow"><div class="t">'+esc(v.name)+'</div>'+
+        '<div class="s">'+esc(v.regnr||"Uten regnr")+' · '+fmtKr(v.dailyRate)+'/natt</div></div>'+
+        '<div class="chev">›</div></div>').join("");
+  }
+  return html + '</div>';
+}
+
+/* ===================== KUNDER ===================== */
+function viewKunder(){
+  let html = backLink("Kunder");
+  html += '<button class="btn btn-primary" style="margin-bottom:10px" data-edit-customer>+ Ny kunde</button><div class="panel">';
+  if(DB.customers.length === 0){
+    html += '<p class="empty">Ingen kunder ennå.</p>';
+  } else {
+    html += DB.customers.map(c=>
+      '<div class="row tappable" data-edit-customer="'+c.id+'"><div class="grow">'+
+      '<div class="t">'+esc(c.name)+'</div><div class="s">'+esc(c.phone||"")+(c.phone&&c.email?" · ":"")+esc(c.email||"")+'</div>'+
+      '</div><div class="chev">›</div></div>').join("");
+  }
+  return html + '</div>';
+}
+
+/* ===================== KOSTNADER ===================== */
+function viewKostnader(){
+  let html = backLink("Kostnader");
+  html += '<div class="panel"><h3>Faste månedlige kostnader</h3>';
+  if(DB.fixedCosts.length === 0){
+    html += '<p class="empty">Ingen faste kostnader.</p>';
+  } else {
+    html += DB.fixedCosts.map(f=>{
+      const v = vehicleById(f.vehicleId);
+      return '<div class="row tappable" data-edit-fixed="'+f.id+'"><div class="grow">'+
+        '<div class="t">'+esc(f.category)+' — '+fmtKr(f.amountPerMonth)+'/mnd</div>'+
+        '<div class="s">'+esc(v?v.name:"Ukjent bil")+'</div>'+
+        '<div class="pills">'+(f.active!==false?'<span class="pill p-ok">Aktiv</span>':'<span class="pill p-off">Pauset</span>')+'</div>'+
+        '</div><div class="chev">›</div></div>';
+    }).join("");
+  }
+  html += '<div style="height:8px"></div><button class="btn btn-ghost btn-sm" data-edit-fixed>+ Ny fast kostnad</button></div>';
+
+  const costs = DB.costs.slice().sort((a,b)=> (b.date||"").localeCompare(a.date||""));
+  html += '<div class="panel"><h3>Engangskostnader</h3>';
+  if(costs.length === 0){
+    html += '<p class="empty">Ingen kostnader registrert.</p>';
+  } else {
+    html += costs.map(k=>{
+      const v = vehicleById(k.vehicleId);
+      return '<div class="row tappable" data-edit-cost="'+k.id+'"><div class="grow">'+
+        '<div class="t">'+esc(k.category)+' — '+fmtKr(k.amount)+'</div>'+
+        '<div class="s">'+fmtDate(k.date)+' · '+esc(v?v.name:"Ukjent bil")+'</div>'+
+        '</div><div class="chev">›</div></div>';
+    }).join("");
+  }
+  html += '<div style="height:8px"></div><button class="btn btn-ghost btn-sm" data-edit-cost>+ Ny kostnad</button></div>';
+  return html;
+}
+
+/* ===================== MER ===================== */
+function backLink(title){
+  return '<div class="row tappable" data-goto="mer" style="padding-top:0"><div class="chev">‹</div>'+
+    '<div class="grow"><div class="t">'+esc(title)+'</div></div></div>';
+}
+
+function viewMer(){
+  const pending = Number(document.getElementById("req-badge").textContent || 0);
+  const item = (tab, icon, label, extra) =>
+    '<div class="row tappable" data-goto="'+tab+'"><div style="font-size:20px">'+icon+'</div>'+
+    '<div class="grow"><div class="t">'+label+'</div>'+(extra?'<div class="s">'+extra+'</div>':'')+'</div>'+
+    '<div class="chev">›</div></div>';
+  return '<div class="panel">'+
+    item("kunder","👤","Kunder", DB.customers.length+" registrert")+
+    item("kostnader","💰","Kostnader", DB.costs.length+" engangs · "+DB.fixedCosts.length+" faste")+
+    item("foresporsler","📨","Forespørsler", pending ? pending+" venter på svar" : "Ingen ventende")+
+  '</div>'+
+  '<p class="faint" style="text-align:center;margin-top:16px">Alt lagres i samme sky-database som nettsiden din.</p>';
+}
+
+
+/* ===================== FORESPØRSLER ===================== */
+async function loadRequests(){
+  const c = document.getElementById("content");
+  try{
+    const { data, error } = await supabaseClient.from("booking_requests")
+      .select("*").order("created_at", { ascending: false });
+    if(error) throw error;
+    const reqs = data || [];
+    const pending = reqs.filter(r=>r.status === "pending");
+    const handled = reqs.filter(r=>r.status !== "pending");
+    setBadge(pending.length);
+
+    let html = backLink("Forespørsler");
+    html += '<div class="panel"><h3>⏳ Venter på svar ('+pending.length+')</h3>';
+    if(pending.length === 0){
+      html += '<p class="empty">Ingen nye forespørsler.</p>';
+    } else {
+      html += pending.map(r=>
+        '<div class="row" style="flex-direction:column;align-items:stretch">'+
+          '<div class="t">'+esc(r.vehicle_name||"Ukjent bil")+'</div>'+
+          '<div class="s"><strong>'+esc(r.customer_name)+'</strong> · '+fmtDate(r.start_date)+' – '+fmtDate(r.end_date)+'</div>'+
+          '<div class="s">'+esc(r.customer_email||"")+(r.customer_phone?" · "+esc(r.customer_phone):"")+'</div>'+
+          (r.message ? '<div class="s" style="font-style:italic">«'+esc(r.message)+'»</div>' : '')+
+          '<div class="btn-pair">'+
+            '<button class="btn btn-ok btn-sm" data-approve="'+esc(r.id)+'">✓ Godkjenn</button>'+
+            '<button class="btn btn-danger btn-sm" data-reject="'+esc(r.id)+'">✗ Avslå</button>'+
+          '</div>'+
+        '</div>').join("");
+    }
+    html += '</div>';
+
+    if(handled.length){
+      html += '<div class="panel"><h3>Behandlet</h3>'+ handled.slice(0,20).map(r=>
+        '<div class="row"><div class="grow"><div class="t">'+esc(r.customer_name)+'</div>'+
+        '<div class="s">'+esc(r.vehicle_name||"")+' · '+fmtDate(r.start_date)+' – '+fmtDate(r.end_date)+'</div>'+
+        '<div class="pills">'+(r.status === "approved"
+          ? '<span class="pill p-ok">Godkjent</span>'
+          : '<span class="pill p-bad">Avslått</span>')+'</div></div></div>').join("")+'</div>';
+    }
+
+    c.innerHTML = html;
+    wireCommon();
+    pending.forEach(r=>{
+      const ok = c.querySelector('[data-approve="'+r.id+'"]');
+      const no = c.querySelector('[data-reject="'+r.id+'"]');
+      if(ok) ok.onclick = ()=> approveRequest(r);
+      if(no) no.onclick = ()=> rejectRequest(r);
+    });
+  }catch(e){
+    c.innerHTML = backLink("Forespørsler") +
+      '<div class="panel"><p class="empty" style="color:var(--red)">Kunne ikke laste forespørsler: '+esc(e.message||e)+'</p></div>';
+    wireCommon();
+  }
+}
+
+async function approveRequest(r){
+  const conflict = DB.bookings.find(b=>
+    b.vehicleId === r.vehicle_id && b.status !== "avlyst" &&
+    overlaps(r.start_date, r.end_date, b.startDate, b.endDate));
+  if(conflict){
+    alert("Det finnes allerede en booking i denne perioden ("+fmtDate(conflict.startDate)+"–"+fmtDate(conflict.endDate)+"). Håndter overlappen først.");
+    return;
+  }
+  let cust = DB.customers.find(c=> (c.email||"").toLowerCase() === (r.customer_email||"").toLowerCase() && r.customer_email);
+  if(!cust){
+    cust = { id: uid(), name: r.customer_name, email: r.customer_email||"", phone: r.customer_phone||"", notes: "Opprettet fra forespørsel" };
+    DB.customers.push(cust);
+  }
+  const v = vehicleById(r.vehicle_id);
+  const price = v ? calcPrice(v, r.start_date, r.end_date).total : 0;
+  DB.bookings.push({
+    id: uid(), vehicleId: r.vehicle_id, customerId: cust.id,
+    startDate: r.start_date, endDate: r.end_date,
+    totalPrice: price, deposit: 0, status: "bekreftet",
+    rentPaid: false, depositPaid: false, depositReturned: false,
+    damageImages: [], notes: "Opprettet fra forespørsel", createdAt: new Date().toISOString()
+  });
+  saveData();
+  await supabaseClient.from("booking_requests").update({ status: "approved" }).eq("id", r.id);
+  showToast("Godkjent — booking opprettet. Husk depositum.");
+  loadRequests();
+}
+
+async function rejectRequest(r){
+  if(!confirm("Avslå denne forespørselen?")) return;
+  await supabaseClient.from("booking_requests").update({ status: "rejected" }).eq("id", r.id);
+  showToast("Forespørsel avslått.");
+  loadRequests();
+}
+
+function setBadge(n){
+  const b = document.getElementById("req-badge");
+  b.textContent = n;
+  b.style.display = n > 0 ? "" : "none";
+}
+
+async function refreshBadge(){
+  try{
+    const { data } = await supabaseClient.from("booking_requests").select("id").eq("status","pending");
+    setBadge(data ? data.length : 0);
+  }catch(e){ /* stille */ }
+}
+
+/* ===================== MODAL-RAMME ===================== */
+function openModal(title, bodyHTML){
+  document.getElementById("modal-title").textContent = title;
+  document.getElementById("modal-body").innerHTML = bodyHTML;
+  document.getElementById("modal").classList.add("on");
+  document.getElementById("modal-body").scrollTop = 0;
+}
+function closeModal(){
+  document.getElementById("modal").classList.remove("on");
+  document.getElementById("modal-body").innerHTML = "";
+}
+function mb(sel){ return document.getElementById("modal-body").querySelector(sel); }
+function val(sel){ const el = mb(sel); return el ? el.value : ""; }
+function num(sel){ const v = val(sel); return v === "" ? 0 : Number(v); }
+function chk(sel){ const el = mb(sel); return el ? el.checked : false; }
+
+function selectField(id, label, options, selected, placeholder){
+  return '<div class="field"><label for="'+id+'">'+label+'</label><select id="'+id+'">'+
+    (placeholder ? '<option value="">'+placeholder+'</option>' : '')+
+    options.map(o=>'<option value="'+esc(o.v)+'"'+(o.v === selected ? " selected" : "")+'>'+esc(o.l)+'</option>').join("")+
+    '</select></div>';
+}
+function textField(id, label, value, type, placeholder, extra){
+  return '<div class="field"><label for="'+id+'">'+label+'</label>'+
+    '<input id="'+id+'" type="'+(type||"text")+'" value="'+esc(value==null?"":value)+'"'+
+    (placeholder?' placeholder="'+esc(placeholder)+'"':'')+(extra||"")+'></div>';
+}
+function areaField(id, label, value, placeholder){
+  return '<div class="field"><label for="'+id+'">'+label+'</label>'+
+    '<textarea id="'+id+'" placeholder="'+esc(placeholder||"Valgfritt")+'">'+esc(value||"")+'</textarea></div>';
+}
+function checkField(id, label, checked){
+  return '<div class="check"><input type="checkbox" id="'+id+'"'+(checked?" checked":"")+'><label for="'+id+'">'+label+'</label></div>';
+}
+
+/* ===================== BOOKING-EDITOR ===================== */
+function openBookingModal(id){
+  const b = id ? bookingById(id) : null;
+  const isNew = !b;
+  const today = todayISO();
+  const d = b || {
+    vehicleId: DB.vehicles[0] ? DB.vehicles[0].id : "",
+    customerId: DB.customers[0] ? DB.customers[0].id : "",
+    startDate: today, endDate: addDays(today,1),
+    totalPrice: "", deposit: "", status: "bekreftet",
+    rentPaid:false, depositPaid:false, depositReturned:false, damageImages:[]
+  };
+
+  let html = "";
+  html += selectField("b-vehicle","Bil", DB.vehicles.map(v=>({v:v.id,l:v.name})), d.vehicleId, DB.vehicles.length?null:"Ingen biler — legg til en bil først");
+  html += selectField("b-customer","Kunde", DB.customers.map(c=>({v:c.id,l:c.name})), d.customerId, DB.customers.length?null:"Ingen kunder — legg til en kunde først");
+  html += '<div class="field-2">'+
+    textField("b-start","Hentedato", d.startDate, "date")+
+    textField("b-end","Returdato", d.endDate, "date")+'</div>';
+  html += '<div class="hint" id="b-price-hint"></div>';
+  html += '<div class="hint warn" id="b-conflict" style="display:none"></div>';
+  html += '<div class="field-2">'+
+    textField("b-price","Totalpris (kr)", d.totalPrice, "number", "0", ' inputmode="numeric"')+
+    textField("b-deposit","Depositum (kr)", d.deposit, "number", "0", ' inputmode="numeric"')+'</div>';
+  html += selectField("b-status","Status", [
+    {v:"bekreftet",l:"Bekreftet"},{v:"forespørsel",l:"Forespørsel"},{v:"avlyst",l:"Avlyst"}
+  ], d.status);
+
+  html += '<div class="panel" style="padding:12px 12px 2px">';
+  html += checkField("b-rentpaid","Leie betalt", d.rentPaid);
+  html += checkField("b-deppaid","Depositum innbetalt", d.depositPaid);
+  html += '<div id="b-deppaid-wrap" style="display:'+(d.depositPaid?"block":"none")+'">'+
+    textField("b-deppaid-date","Dato betalt", d.depositPaidDate||"", "date")+'</div>';
+  html += checkField("b-depret","Depositum returnert", d.depositReturned);
+  html += '<div id="b-depret-wrap" style="display:'+(d.depositReturned?"block":"none")+'">'+
+    textField("b-depret-date","Dato returnert", d.depositReturnedDate||"", "date")+
+    textField("b-depret-amount","Returnert beløp (kr)", d.depositReturnedAmount==null?"":d.depositReturnedAmount, "number", "Hele depositumet", ' inputmode="numeric"')+
+    textField("b-depnotes","Notat depositum", d.depositNotes||"", "text", "Valgfritt")+'</div>';
+  html += '</div>';
+
+  html += '<div class="field-2">'+
+    textField("b-km-start","Km ved henting", d.kmStart==null?"":d.kmStart, "number", "0", ' inputmode="numeric"')+
+    textField("b-km-end","Km ved levering", d.kmEnd==null?"":d.kmEnd, "number", "0", ' inputmode="numeric"')+'</div>';
+  html += '<div class="hint" id="b-km-hint"></div>';
+
+  html += areaField("b-damage","Skaderapport / notat ved retur", d.damageNotes, "Ingen skader");
+  html += '<div class="field"><label>Skadebilder</label><div class="thumbs" id="b-thumbs"></div>'+
+    '<input type="file" id="b-photo-input" accept="image/*" style="display:none"></div>';
+  html += areaField("b-notes","Notater", d.notes, "Valgfritt");
+
+  html += '<button class="btn btn-primary" id="b-save">Lagre booking</button>';
+  if(!isNew) html += '<button class="btn btn-danger" id="b-delete">Slett booking</button>';
+
+  openModal(isNew ? "Ny booking" : "Rediger booking", html);
+
+  /* --- lokal tilstand for bilder + auto-pris --- */
+  let images = (d.damageImages || []).slice();
+  let priceAuto = isNew || !d.totalPrice;
+
+  function drawThumbs(){
+    const wrap = mb("#b-thumbs");
+    wrap.innerHTML = images.map((src,i)=>
+      '<div class="thumb"><img src="'+src+'" alt=""><button data-rm="'+i+'">×</button></div>').join("")+
+      '<button class="addphoto" id="b-addphoto">+</button>';
+    wrap.querySelectorAll("[data-rm]").forEach(btn=>{
+      btn.onclick = ()=>{ images.splice(Number(btn.dataset.rm),1); drawThumbs(); };
+    });
+    mb("#b-addphoto").onclick = ()=> mb("#b-photo-input").click();
+  }
+  drawThumbs();
+
+  mb("#b-photo-input").onchange = (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    shrinkImage(file, (dataUrl)=>{ images.push(dataUrl); drawThumbs(); });
+    e.target.value = "";
+  };
+
+  function refreshCalc(){
+    const v = vehicleById(val("#b-vehicle"));
+    const s = val("#b-start"), e = val("#b-end");
+    const hint = mb("#b-price-hint"), conflictEl = mb("#b-conflict");
+    if(v && s && e && e > s){
+      const p = calcPrice(v, s, e);
+      hint.textContent = "Forslag: " + fmtKr(p.total) + " for " + p.nights + (p.nights === 1 ? " natt — " : " netter — ") + p.breakdown;
+      if(priceAuto) mb("#b-price").value = p.total;
+      const c = DB.bookings.find(x=> x.id !== (b?b.id:null) && x.vehicleId === v.id && x.status !== "avlyst" && overlaps(s, e, x.startDate, x.endDate));
+      if(c){
+        conflictEl.textContent = "⚠️ Denne bilen er allerede booket " + fmtDate(c.startDate) + " – " + fmtDate(c.endDate) + ".";
+        conflictEl.style.display = "block";
+      } else conflictEl.style.display = "none";
+    } else {
+      hint.textContent = "Velg bil og gyldige datoer for prisforslag.";
+      conflictEl.style.display = "none";
+    }
+    const ks = val("#b-km-start"), ke = val("#b-km-end");
+    mb("#b-km-hint").textContent = (ks !== "" && ke !== "" && Number(ke) >= Number(ks))
+      ? (Number(ke) - Number(ks)).toLocaleString("nb-NO") + " km kjørt i perioden" : "";
+  }
+
+  ["#b-vehicle","#b-start","#b-end","#b-km-start","#b-km-end"].forEach(sel=>{
+    mb(sel).addEventListener("change", refreshCalc);
+    mb(sel).addEventListener("input", refreshCalc);
+  });
+  mb("#b-price").addEventListener("input", ()=>{ priceAuto = false; });
+  mb("#b-start").addEventListener("change", ()=>{
+    const s = val("#b-start"), e = val("#b-end");
+    if(s && e && e <= s) mb("#b-end").value = addDays(s,1);
+    refreshCalc();
+  });
+  mb("#b-deppaid").addEventListener("change", (ev)=>{
+    mb("#b-deppaid-wrap").style.display = ev.target.checked ? "block" : "none";
+    if(ev.target.checked && !val("#b-deppaid-date")) mb("#b-deppaid-date").value = todayISO();
+  });
+  mb("#b-depret").addEventListener("change", (ev)=>{
+    mb("#b-depret-wrap").style.display = ev.target.checked ? "block" : "none";
+    if(ev.target.checked && !val("#b-depret-date")) mb("#b-depret-date").value = todayISO();
+  });
+  refreshCalc();
+
+  mb("#b-save").onclick = ()=>{
+    const vehicleId = val("#b-vehicle"), customerId = val("#b-customer");
+    const startDate = val("#b-start"), endDate = val("#b-end");
+    if(!vehicleId){ alert("Velg en bil."); return; }
+    if(!customerId){ alert("Velg en kunde."); return; }
+    if(!startDate || !endDate || endDate <= startDate){ alert("Returdato må være etter hentedato."); return; }
+    const rec = {
+      id: b ? b.id : uid(),
+      vehicleId, customerId, startDate, endDate,
+      totalPrice: num("#b-price"), deposit: num("#b-deposit"),
+      status: val("#b-status"),
+      rentPaid: chk("#b-rentpaid"),
+      depositPaid: chk("#b-deppaid"),
+      depositPaidDate: chk("#b-deppaid") ? val("#b-deppaid-date") : "",
+      depositReturned: chk("#b-depret"),
+      depositReturnedDate: chk("#b-depret") ? val("#b-depret-date") : "",
+      depositReturnedAmount: chk("#b-depret") && val("#b-depret-amount") !== "" ? num("#b-depret-amount") : undefined,
+      depositNotes: chk("#b-depret") ? val("#b-depnotes") : "",
+      kmStart: val("#b-km-start") !== "" ? num("#b-km-start") : undefined,
+      kmEnd: val("#b-km-end") !== "" ? num("#b-km-end") : undefined,
+      damageNotes: val("#b-damage"),
+      damageImages: images,
+      notes: val("#b-notes"),
+      createdAt: b && b.createdAt ? b.createdAt : new Date().toISOString()
+    };
+    if(b){ DB.bookings[DB.bookings.findIndex(x=>x.id===b.id)] = rec; }
+    else { DB.bookings.push(rec); }
+    saveData(); closeModal(); render();
+    showToast(b ? "Booking oppdatert" : "Booking opprettet");
+  };
+
+  if(!isNew){
+    mb("#b-delete").onclick = ()=>{
+      if(!confirm("Slette denne bookingen?")) return;
+      DB.bookings = DB.bookings.filter(x=>x.id !== b.id);
+      saveData(); closeModal(); render();
+      showToast("Booking slettet");
+    };
+  }
+}
+
+/* Krymper bilder før de lagres, så databasen ikke sprenges */
+function shrinkImage(file, cb){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const max = 1200;
+      let w = img.width, h = img.height;
+      if(w > max || h > max){ const r = Math.min(max/w, max/h); w = Math.round(w*r); h = Math.round(h*r); }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      cb(canvas.toDataURL("image/jpeg", 0.6));
+    };
+    img.onerror = ()=> cb(reader.result);
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ===================== BIL-EDITOR ===================== */
+function openVehicleModal(id){
+  const v = id ? vehicleById(id) : null;
+  const d = v || { name:"", regnr:"", dailyRate:"", weekendRate:"", highSeasonRate:"", hsStart:"", hsEnd:"", color:VEHICLE_COLORS[0], notes:"" };
+  let html = "";
+  html += textField("v-name","Navn", d.name, "text", "F.eks. Hobby Optima");
+  html += textField("v-regnr","Registreringsnummer", d.regnr, "text", "AB 12345");
+  html += textField("v-daily","Pris per natt (kr)", d.dailyRate, "number", "0", ' inputmode="numeric"');
+  html += '<div class="field-2">'+
+    textField("v-weekend","Helgepris (kr)", d.weekendRate, "number", "Som normal", ' inputmode="numeric"')+
+    textField("v-high","Høysesongpris (kr)", d.highSeasonRate, "number", "Som normal", ' inputmode="numeric"')+'</div>';
+  html += '<div class="field-2">'+
+    textField("v-hs-start","Høysesong fra (DD.MM)", d.hsStart, "text", "15.06")+
+    textField("v-hs-end","Høysesong til (DD.MM)", d.hsEnd, "text", "15.08")+'</div>';
+  html += '<div class="field"><label>Farge i kalenderen</label><div class="swatches" id="v-colors">'+
+    VEHICLE_COLORS.map(c=>'<button class="swatch'+(c===d.color?" on":"")+'" data-color="'+c+'" style="background:'+c+'"></button>').join("")+
+    '</div></div>';
+  html += areaField("v-notes","Notater", d.notes);
+  html += '<button class="btn btn-primary" id="v-save">Lagre bil</button>';
+  if(v) html += '<button class="btn btn-danger" id="v-delete">Slett bil</button>';
+
+  openModal(v ? "Rediger bil" : "Ny bil", html);
+
+  let color = d.color;
+  mb("#v-colors").querySelectorAll("[data-color]").forEach(btn=>{
+    btn.onclick = ()=>{
+      color = btn.dataset.color;
+      mb("#v-colors").querySelectorAll(".swatch").forEach(s=>s.classList.toggle("on", s.dataset.color === color));
+    };
+  });
+
+  mb("#v-save").onclick = ()=>{
+    const name = val("#v-name").trim();
+    if(!name){ alert("Bilen må ha et navn."); return; }
+    const rec = {
+      id: v ? v.id : uid(), name, regnr: val("#v-regnr").trim(),
+      dailyRate: num("#v-daily"), weekendRate: num("#v-weekend"), highSeasonRate: num("#v-high"),
+      hsStart: val("#v-hs-start").trim(), hsEnd: val("#v-hs-end").trim(),
+      color, notes: val("#v-notes")
+    };
+    if(v){ DB.vehicles[DB.vehicles.findIndex(x=>x.id===v.id)] = rec; }
+    else { DB.vehicles.push(rec); }
+    saveData(); closeModal(); render();
+    showToast(v ? "Bil oppdatert" : "Bil lagt til");
+  };
+  if(v){
+    mb("#v-delete").onclick = ()=>{
+      const inUse = DB.bookings.filter(b=>b.vehicleId === v.id).length;
+      const msg = inUse ? "Denne bilen har "+inUse+" booking(er). Slette likevel?" : "Slette denne bilen?";
+      if(!confirm(msg)) return;
+      DB.vehicles = DB.vehicles.filter(x=>x.id !== v.id);
+      saveData(); closeModal(); render();
+      showToast("Bil slettet");
+    };
+  }
+}
+
+/* ===================== KUNDE-EDITOR ===================== */
+function openCustomerModal(id){
+  const c = id ? customerById(id) : null;
+  const d = c || { name:"", phone:"", email:"", notes:"" };
+  let html = "";
+  html += textField("c-name","Navn", d.name, "text", "Fornavn Etternavn");
+  html += textField("c-phone","Telefon", d.phone, "tel", "+47 000 00 000");
+  html += textField("c-email","E-post", d.email, "email", "navn@epost.no", ' autocapitalize="none"');
+  html += areaField("c-notes","Notater", d.notes);
+  html += '<button class="btn btn-primary" id="c-save">Lagre kunde</button>';
+  if(c) html += '<button class="btn btn-danger" id="c-delete">Slett kunde</button>';
+
+  openModal(c ? "Rediger kunde" : "Ny kunde", html);
+
+  mb("#c-save").onclick = ()=>{
+    const name = val("#c-name").trim();
+    if(!name){ alert("Kunden må ha et navn."); return; }
+    const rec = { id: c ? c.id : uid(), name, phone: val("#c-phone").trim(), email: val("#c-email").trim(), notes: val("#c-notes") };
+    if(c){ DB.customers[DB.customers.findIndex(x=>x.id===c.id)] = rec; }
+    else { DB.customers.push(rec); }
+    saveData(); closeModal(); render();
+    showToast(c ? "Kunde oppdatert" : "Kunde lagt til");
+  };
+  if(c){
+    mb("#c-delete").onclick = ()=>{
+      const inUse = DB.bookings.filter(b=>b.customerId === c.id).length;
+      const msg = inUse ? "Denne kunden har "+inUse+" booking(er). Slette likevel?" : "Slette denne kunden?";
+      if(!confirm(msg)) return;
+      DB.customers = DB.customers.filter(x=>x.id !== c.id);
+      saveData(); closeModal(); render();
+      showToast("Kunde slettet");
+    };
+  }
+}
+
+/* ===================== KOSTNAD-EDITOR ===================== */
+function openCostModal(id){
+  const k = id ? DB.costs.find(x=>x.id===id) : null;
+  const d = k || { vehicleId: DB.vehicles[0]?DB.vehicles[0].id:"", date: todayISO(), category: COST_CATEGORIES[0], amount:"", notes:"" };
+  let html = "";
+  html += selectField("k-vehicle","Bil", DB.vehicles.map(v=>({v:v.id,l:v.name})), d.vehicleId, DB.vehicles.length?null:"Ingen biler");
+  html += textField("k-date","Dato", d.date, "date");
+  html += selectField("k-category","Kategori", COST_CATEGORIES.map(c=>({v:c,l:c})), d.category);
+  html += textField("k-amount","Beløp (kr)", d.amount, "number", "0", ' inputmode="numeric"');
+  html += areaField("k-notes","Notater", d.notes);
+  html += '<button class="btn btn-primary" id="k-save">Lagre kostnad</button>';
+  if(k) html += '<button class="btn btn-danger" id="k-delete">Slett kostnad</button>';
+
+  openModal(k ? "Rediger kostnad" : "Ny kostnad", html);
+
+  mb("#k-save").onclick = ()=>{
+    if(!val("#k-vehicle")){ alert("Legg til en bil først."); return; }
+    const rec = { id: k?k.id:uid(), vehicleId: val("#k-vehicle"), date: val("#k-date"), category: val("#k-category"), amount: num("#k-amount"), notes: val("#k-notes") };
+    if(k){ DB.costs[DB.costs.findIndex(x=>x.id===k.id)] = rec; } else { DB.costs.push(rec); }
+    saveData(); closeModal(); render();
+    showToast(k ? "Kostnad oppdatert" : "Kostnad lagt til");
+  };
+  if(k){
+    mb("#k-delete").onclick = ()=>{
+      if(!confirm("Slette denne kostnaden?")) return;
+      DB.costs = DB.costs.filter(x=>x.id !== k.id);
+      saveData(); closeModal(); render();
+      showToast("Kostnad slettet");
+    };
+  }
+}
+
+/* ===================== FAST KOSTNAD-EDITOR ===================== */
+function openFixedModal(id){
+  const f = id ? DB.fixedCosts.find(x=>x.id===id) : null;
+  const d = f || { vehicleId: DB.vehicles[0]?DB.vehicles[0].id:"", category: FIXED_COST_CATEGORIES[0], amountPerMonth:"", active:true };
+  let html = "";
+  html += selectField("f-vehicle","Bil", DB.vehicles.map(v=>({v:v.id,l:v.name})), d.vehicleId, DB.vehicles.length?null:"Ingen biler");
+  html += selectField("f-category","Kategori", FIXED_COST_CATEGORIES.map(c=>({v:c,l:c})), d.category);
+  html += textField("f-amount","Beløp per måned (kr)", d.amountPerMonth, "number", "0", ' inputmode="numeric"');
+  html += checkField("f-active","Aktiv (regnes med i kostnadene)", d.active !== false);
+  html += '<button class="btn btn-primary" id="f-save">Lagre fast kostnad</button>';
+  if(f) html += '<button class="btn btn-danger" id="f-delete">Slett fast kostnad</button>';
+
+  openModal(f ? "Rediger fast kostnad" : "Ny fast kostnad", html);
+
+  mb("#f-save").onclick = ()=>{
+    if(!val("#f-vehicle")){ alert("Legg til en bil først."); return; }
+    const rec = { id: f?f.id:uid(), vehicleId: val("#f-vehicle"), category: val("#f-category"), amountPerMonth: num("#f-amount"), active: chk("#f-active") };
+    if(f){ DB.fixedCosts[DB.fixedCosts.findIndex(x=>x.id===f.id)] = rec; } else { DB.fixedCosts.push(rec); }
+    saveData(); closeModal(); render();
+    showToast(f ? "Fast kostnad oppdatert" : "Fast kostnad lagt til");
+  };
+  if(f){
+    mb("#f-delete").onclick = ()=>{
+      if(!confirm("Slette denne faste kostnaden?")) return;
+      DB.fixedCosts = DB.fixedCosts.filter(x=>x.id !== f.id);
+      saveData(); closeModal(); render();
+      showToast("Fast kostnad slettet");
+    };
+  }
+}
+
+/* ===================== INNLOGGING / OPPSTART ===================== */
+function showLogin(msg){
+  document.getElementById("login-overlay").style.display = "flex";
+  document.getElementById("app-root").classList.remove("on");
+  if(msg !== undefined) document.getElementById("login-status").textContent = msg;
+}
+function showApp(){
+  document.getElementById("login-overlay").style.display = "none";
+  document.getElementById("app-root").classList.add("on");
+  setTab("oversikt");
+  refreshBadge();
+}
+
+async function doLogin(){
+  const pw = document.getElementById("login-password").value;
+  const err = document.getElementById("login-error");
+  const btn = document.getElementById("login-btn");
+  err.style.display = "none";
+  if(!pw){ err.textContent = "Skriv inn passordet."; err.style.display = "block"; return; }
+  btn.disabled = true;
+  document.getElementById("login-status").textContent = "Logger inn …";
+  try{
+    const { error } = await supabaseClient.auth.signInWithPassword({ email: AUTH_EMAIL, password: pw });
+    if(error){
+      err.textContent = "Feil passord, eller bruker ikke satt opp ennå.";
+      err.style.display = "block";
+      document.getElementById("login-status").textContent = "";
+      btn.disabled = false;
+      return;
+    }
+    document.getElementById("login-status").textContent = "Henter data …";
+    await pullFromCloud();
+    document.getElementById("login-password").value = "";
+    showApp();
+  }catch(e){
+    console.error(e);
+    err.textContent = "Kunne ikke koble til. Sjekk internettforbindelsen.";
+    err.style.display = "block";
+    document.getElementById("login-status").textContent = "";
+  }
+  btn.disabled = false;
+}
+
+document.getElementById("login-btn").onclick = doLogin;
+document.getElementById("login-password").addEventListener("keydown", e=>{ if(e.key === "Enter") doLogin(); });
+document.getElementById("logout-btn").onclick = async ()=>{
+  if(!confirm("Logge ut?")) return;
+  await supabaseClient.auth.signOut();
+  showLogin("");
+};
+document.getElementById("modal-close").onclick = closeModal;
+document.querySelectorAll("#tabbar button").forEach(b=>{ b.onclick = ()=> setTab(b.dataset.tab); });
+
+/* Hent friske data når appen hentes fram igjen fra bakgrunnen */
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState === "visible" && document.getElementById("app-root").classList.contains("on")){
+    pullFromCloud().then(()=>{ render(); refreshBadge(); });
+  }
+});
+
+(async function init(){
+  loadLocal();
+  showLogin("Sjekker innlogging …");
+  try{
+    const { data } = await supabaseClient.auth.getSession();
+    if(data && data.session){
+      document.getElementById("login-status").textContent = "Henter data …";
+      await pullFromCloud();
+      showApp();
+    } else showLogin("");
+  }catch(e){ showLogin(""); }
+})();
+
+/* Registrer service worker (gjør appen installerbar og raskere) */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js").catch(e=>console.log("SW ikke registrert:", e));
+  });
+}
+
+</script>
+</body>
+</html>
