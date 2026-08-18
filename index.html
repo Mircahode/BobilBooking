@@ -599,6 +599,13 @@ function applyMigrations(){
     if(b.depositReturned === undefined) b.depositReturned = false;
     if(b.rentPaid === undefined) b.rentPaid = false;
     if(b.damageImages === undefined) b.damageImages = [];
+    /* Mobilappen lagret en periode bilder som ren tekststreng. Konverter til
+       samme objektformat som resten av systemet, så de vises overalt. */
+    if(Array.isArray(b.damageImages)){
+      b.damageImages = b.damageImages
+        .map(im => typeof im === "string" ? { name: "skadefoto.jpg", dataUrl: im } : im)
+        .filter(im => im && im.dataUrl);
+    } else b.damageImages = [];
   });
 }
 applyMigrations();
@@ -1464,7 +1471,7 @@ function updateDamagePreview(){
   if(!currentDamageImages.length){ el.innerHTML = ""; return; }
   el.innerHTML = currentDamageImages.map((img, i)=>`
     <div style="position:relative;">
-      <img src="${img.dataUrl}" alt="${img.name}" style="width:80px; height:80px; object-fit:cover; border-radius:6px; border:1px solid var(--border);">
+      <img src="${typeof img === "string" ? img : (img.dataUrl||"")}" alt="${(img && img.name) || "skadefoto"}" style="width:80px; height:80px; object-fit:cover; border-radius:6px; border:1px solid var(--border);">
       <button type="button" data-damage-remove="${i}" style="position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%; background:#ef4444; color:#fff; border:none; cursor:pointer; font-size:12px; line-height:1;">✕</button>
     </div>
   `).join("");

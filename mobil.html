@@ -205,9 +205,14 @@
   .thumbs{display:flex; flex-wrap:wrap; gap:8px;}
   .thumb{position:relative; width:76px; height:76px;}
   .thumb img{width:100%; height:100%; object-fit:cover; border-radius:8px; background:var(--line);}
-  .thumb button{
+  .thumb button.rm{
     position:absolute; top:-6px; right:-6px; width:22px; height:22px; border-radius:11px;
     background:var(--red); color:#fff; border:none; font-size:13px; line-height:1; padding:0;
+  }
+  .thumb button.save{
+    position:absolute; bottom:0; left:0; right:0; height:22px;
+    border:none; border-radius:0 0 8px 8px; padding:0;
+    background:rgba(15,23,42,0.62); color:#fff; font-size:11px; line-height:22px;
   }
   .addphoto{
     width:76px; height:76px; border-radius:8px; border:1px dashed #cbd5e1;
@@ -290,9 +295,14 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 });
 
 const STORAGE_KEY = "bobilBookingData_v1";
+const PREV_KEY = "bobilBookingData_v1_forrige";   /* automatisk sikkerhetsnett */
 let DB = { vehicles: [], customers: [], bookings: [], costs: [], fixedCosts: [], settings: {} };
 let saveTimer = null;
 let currentTab = "oversikt";
+/* Sant fra du endrer noe til skyen har bekreftet at den har mottatt det.
+   Så lenge dette er sant skal INGENTING overskrive de lokale dataene. */
+let unsavedChanges = false;
+let lastSaveError = "";
 
 /* ===================== DATALAG ===================== */
 function setSyncStatus(t){ const el = document.getElementById("sync-status"); if(el) el.textContent = t; }
@@ -306,18 +316,52 @@ function applyMigrations(){
     if(b.depositReturned === undefined) b.depositReturned = false;
     if(b.rentPaid === undefined) b.rentPaid = false;
     if(b.damageImages === undefined) b.damageImages = [];
+    /* Bilder har historisk vært lagret på to måter: som ren tekststreng
+       (data:image/...) og som objekt {name, dataUrl}. Vi lagrer nå alltid
+       objekt, slik at nettsiden, mobilappen og Expo-appen viser de samme
+       bildene. Gamle strenger konverteres her. */
+    if(Array.isArray(b.damageImages)){
+      b.damageImages = b.damageImages
+        .map(im => typeof im === "string" ? { name: "skadefoto.jpg", dataUrl: im } : im)
+        .filter(im => im && im.dataUrl);
+    } else b.damageImages = [];
   });
 }
+
+/* Leser bildekilden uansett hvilket av de to formatene bildet er lagret i. */
+function imgSrc(im){
+  if(!im) return "";
+  return typeof im === "string" ? im : (im.dataUrl || "");
+}
+
+/* Hvor mye plass dataene tar (bildene er nesten alt). */
+function dbSizeMB(){ return JSON.stringify(DB).length / 1048576; }
 
 function loadLocal(){
   const raw = localStorage.getItem(STORAGE_KEY);
   if(raw){ try{ DB = JSON.parse(raw); }catch(e){ console.error(e); } }
   applyMigrations();
+  /* Har migreringen endret noe (f.eks. gjort om bilder fra tekststreng til
+     objekt), lagrer vi det med én gang så det ikke må gjøres om igjen. */
+  const after = JSON.stringify(DB);
+  if(raw && after !== raw){ try{ localStorage.setItem(STORAGE_KEY, after); }catch(e){} }
 }
 
 function saveData(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); }
-  catch(e){ console.error(e); }
+  unsavedChanges = true;
+  lastSaveError = "";
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+  }catch(e){
+    /* Nesten alltid: telefonen er full for denne appen (som regel for mange
+       eller for store bilder). Dette MÅ vises — før svelget vi det i stillhet,
+       og da så alt ut til å gå bra helt til dataene var borte. */
+    console.error(e);
+    lastSaveError = "Får ikke plass til dataene på telefonen (" + Math.round(dbSizeMB()*10)/10 + " MB). Slett noen skadebilder.";
+    setSyncStatus("⚠️ IKKE lagret");
+    alert("Kunne ikke lagre på telefonen:\n\n" + lastSaveError +
+          "\n\nEndringen er foreløpig bare i minnet. Slett noen bilder og lagre på nytt.");
+  }
   setSyncStatus("Lagrer …");
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushToCloud, 600);
@@ -333,11 +377,18 @@ async function pushToCloud(){
       { onConflict: "user_id" }
     );
     if(error) throw error;
+    unsavedChanges = false;
+    lastSaveError = "";
     setSyncStatus("☁️ Lagret i skyen");
     syncPublicData();
   }catch(e){
     console.error(e);
-    setSyncStatus("⚠️ Lagret lokalt (ingen nettforbindelse?)");
+    /* Viktig: unsavedChanges blir stående sann, slik at pullFromCloud ikke
+       får lov til å overskrive endringen med den gamle utgaven fra skyen. */
+    lastSaveError = (e && e.message) ? e.message : "ukjent feil";
+    setSyncStatus("⚠️ Ikke lagret i skyen — prøver igjen");
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(pushToCloud, 8000);
   }
 }
 
@@ -379,10 +430,20 @@ async function pullFromCloud(){
     const { data, error } = await supabaseClient.from("app_state")
       .select("data").eq("user_id", userId).maybeSingle();
     if(error) throw error;
+    if(unsavedChanges){
+      /* Vi har endringer som skyen ennå ikke har bekreftet. Å hente ned nå
+         ville slettet dem. Vi prøver heller å sende dem opp igjen. */
+      setSyncStatus("⚠️ Ikke lagret i skyen — prøver igjen");
+      pushToCloud();
+      return true;
+    }
     if(data && data.data){
+      /* Sikkerhetsnett: behold utgaven vi har nå, før skyen overskriver den.
+         Skulle noe forsvinne, kan det hentes tilbake under «Mer». */
+      snapshotPrevious();
       DB = data.data;
       applyMigrations();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); }catch(e){ console.error(e); }
       setSyncStatus("☁️ Synkronisert");
     } else {
       await pushToCloud();
@@ -394,6 +455,95 @@ async function pullFromCloud(){
     setSyncStatus("⚠️ Offline — viser lagret data");
     return false;
   }
+}
+
+/* Lagrer nåværende utgave som «forrige versjon». Er det ikke plass, prøver vi
+   på nytt uten bildene — da berges i det minste bookinger, kunder og priser. */
+function snapshotPrevious(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw) return;
+  const stamp = new Date().toISOString();
+  try{
+    localStorage.setItem(PREV_KEY, JSON.stringify({ savedAt: stamp, utenBilder: false, data: JSON.parse(raw) }));
+    return;
+  }catch(e){ /* trolig full — prøv uten bilder */ }
+  try{
+    const slank = JSON.parse(raw);
+    (slank.bookings || []).forEach(b => { b.damageImages = []; });
+    localStorage.setItem(PREV_KEY, JSON.stringify({ savedAt: stamp, utenBilder: true, data: slank }));
+  }catch(e){ console.error("klarte ikke å ta vare på forrige versjon", e); }
+}
+
+function readPrevious(){
+  try{
+    const raw = localStorage.getItem(PREV_KEY);
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    return (o && o.data) ? o : null;
+  }catch(e){ return null; }
+}
+
+/* Teller innhold, slik at han kan se hva en sikkerhetskopi faktisk inneholder
+   FØR han gjenoppretter den. */
+function summarise(d){
+  if(!d) return "tom";
+  let bilder = 0;
+  (d.bookings || []).forEach(b => bilder += (b.damageImages || []).length);
+  return (d.bookings||[]).length + " bookinger · " + (d.vehicles||[]).length + " biler · " +
+         (d.customers||[]).length + " kunder · " + ((d.costs||[]).length + (d.fixedCosts||[]).length) + " kostnader · " +
+         bilder + " bilder";
+}
+
+/* Laster ned alt som én fil. Samme format som «Eksporter data» på nettsiden. */
+async function lastNedSikkerhetskopi(){
+  const navn = "bobil-sikkerhetskopi-" + todayISO() + ".json";
+  const blob = new Blob([JSON.stringify(DB, null, 2)], { type: "application/json" });
+  try{
+    const file = new File([blob], navn, { type: "application/json" });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: navn });
+      return;
+    }
+  }catch(e){ if(e && e.name === "AbortError") return; }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = navn;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 60000);
+  showToast("Sikkerhetskopi lastet ned");
+}
+
+/* Tar imot en fil og legger den inn — etter at han har sett hva den inneholder. */
+function gjenopprettFraFil(file){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let d;
+    try{ d = JSON.parse(reader.result); }
+    catch(e){ alert("Denne filen er ikke en gyldig sikkerhetskopi."); return; }
+    if(!d || !Array.isArray(d.bookings) || !Array.isArray(d.vehicles)){
+      alert("Denne filen ser ikke ut som en sikkerhetskopi fra Bobil Booking."); return;
+    }
+    if(!confirm("Gjenopprette denne sikkerhetskopien?\n\nFilen inneholder:\n" + summarise(d) +
+                "\n\nDu har nå:\n" + summarise(DB) +
+                "\n\nDet du har nå blir erstattet.")) return;
+    snapshotPrevious();
+    DB = d; applyMigrations(); saveData(); render();
+    showToast("Sikkerhetskopi gjenopprettet");
+  };
+  reader.onerror = ()=> alert("Klarte ikke å lese filen.");
+  reader.readAsText(file);
+}
+
+function gjenopprettForrige(){
+  const prev = readPrevious();
+  if(!prev){ alert("Det finnes ingen tidligere versjon å hente tilbake."); return; }
+  if(!confirm("Hente tilbake versjonen fra " + fmtDate(prev.savedAt.slice(0,10)) + "?\n\n" +
+              "Den inneholder:\n" + summarise(prev.data) +
+              (prev.utenBilder ? "\n(uten skadebilder — det var ikke plass til dem)" : "") +
+              "\n\nDu har nå:\n" + summarise(DB) +
+              "\n\nDet du har nå blir erstattet.")) return;
+  DB = prev.data; applyMigrations(); saveData(); render();
+  showToast("Forrige versjon hentet tilbake");
 }
 
 /* ===================== HJELPERE ===================== */
@@ -519,6 +669,21 @@ function wireCommon(){
   c.querySelectorAll("[data-edit-customer]").forEach(el=>{ el.onclick = ()=> openCustomerModal(el.dataset.editCustomer || null); });
   c.querySelectorAll("[data-edit-cost]").forEach(el=>{ el.onclick = ()=> openCostModal(el.dataset.editCost || null); });
   c.querySelectorAll("[data-edit-fixed]").forEach(el=>{ el.onclick = ()=> openFixedModal(el.dataset.editFixed || null); });
+
+  const bk = c.querySelector("#mer-backup");
+  if(bk) bk.onclick = lastNedSikkerhetskopi;
+  const rs = c.querySelector("#mer-restore");
+  const rsIn = c.querySelector("#mer-restore-input");
+  if(rs && rsIn){
+    rs.onclick = ()=> rsIn.click();
+    rsIn.onchange = (e)=>{
+      const f = e.target.files && e.target.files[0];
+      e.target.value = "";
+      if(f) gjenopprettFraFil(f);
+    };
+  }
+  const pv = c.querySelector("#mer-prev");
+  if(pv) pv.onclick = gjenopprettForrige;
 }
 
 /* ===================== OVERSIKT ===================== */
@@ -778,7 +943,42 @@ function viewMer(){
     item("kostnader","💰","Kostnader", DB.costs.length+" engangs · "+DB.fixedCosts.length+" faste")+
     item("foresporsler","📨","Forespørsler", pending ? pending+" venter på svar" : "Ingen ventende")+
   '</div>'+
+  storagePanel()+
+  backupPanel()+
   '<p class="faint" style="text-align:center;margin-top:16px">Alt lagres i samme sky-database som nettsiden din.</p>';
+}
+
+function backupPanel(){
+  const prev = readPrevious();
+  return '<div class="panel"><h3>Sikkerhetskopi</h3>'+
+    '<div class="s">Du har nå: '+summarise(DB)+'</div>'+
+    '<button class="btn btn-primary" style="margin-top:10px" id="mer-backup">⬇️ Last ned sikkerhetskopi</button>'+
+    '<button class="btn" style="margin-top:8px" id="mer-restore">⬆️ Gjenopprett fra fil</button>'+
+    '<input type="file" id="mer-restore-input" accept=".json,application/json" style="display:none">'+
+    (prev ? '<button class="btn" style="margin-top:8px" id="mer-prev">↩️ Hent tilbake forrige versjon</button>'+
+            '<div class="hint">Fra '+fmtDate(prev.savedAt.slice(0,10))+' · '+summarise(prev.data)+
+            (prev.utenBilder ? ' (uten bilder)' : '')+'</div>'
+          : '<div class="hint">Appen tar automatisk vare på forrige versjon hver gang den henter nye data fra skyen.</div>')+
+    '</div>';
+}
+
+/* Viser hvor mye plass bildene tar, så det aldri igjen går fullt i stillhet. */
+function storagePanel(){
+  const mb = dbSizeMB();
+  let photos = 0, photoMB = 0;
+  DB.bookings.forEach(b=>(b.damageImages||[]).forEach(im=>{
+    photos++; photoMB += imgSrc(im).length / 1048576;
+  }));
+  const pct = Math.min(100, Math.round(mb / 4 * 100));
+  const col = pct >= 85 ? "var(--red)" : pct >= 60 ? "var(--amber)" : "var(--green)";
+  const warn = pct >= 85
+    ? '<div class="hint warn" style="margin-top:8px">Det begynner å bli fullt. Slett noen skadebilder fra gamle bookinger.</div>'
+    : (!unsavedChanges ? '' : '<div class="hint warn" style="margin-top:8px">Noe er ikke lagret i skyen ennå.</div>');
+  return '<div class="panel"><h3>Lagringsplass</h3>'+
+    '<div class="s">'+(Math.round(mb*100)/100)+' MB brukt · '+photos+' skadebilder ('+(Math.round(photoMB*100)/100)+' MB)</div>'+
+    '<div class="barTrack" style="height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:6px">'+
+      '<div style="height:100%;width:'+pct+'%;background:'+col+'"></div></div>'+
+    warn+'</div>';
 }
 
 
@@ -887,12 +1087,21 @@ async function refreshBadge(){
 
 /* ===================== MODAL-RAMME ===================== */
 function openModal(title, bodyHTML){
+  modalUnsavedCheck = null;
   document.getElementById("modal-title").textContent = title;
   document.getElementById("modal-body").innerHTML = bodyHTML;
   document.getElementById("modal").classList.add("on");
   document.getElementById("modal-body").scrollTop = 0;
 }
-function closeModal(){
+/* Settes av booking-editoren, slik at vi kan advare hvis han lukker vinduet
+   etter å ha lagt til bilder uten å trykke Lagre. */
+let modalUnsavedCheck = null;
+
+function closeModal(force){
+  if(!force && typeof modalUnsavedCheck === "function" && modalUnsavedCheck()){
+    if(!confirm("Du har lagt til eller fjernet bilder uten å lagre.\n\nLukker du nå, blir endringene borte. Lukke likevel?")) return;
+  }
+  modalUnsavedCheck = null;
   document.getElementById("modal").classList.remove("on");
   document.getElementById("modal-body").innerHTML = "";
 }
@@ -966,8 +1175,10 @@ function openBookingModal(id){
   html += '<div class="hint" id="b-km-hint"></div>';
 
   html += areaField("b-damage","Skaderapport / notat ved retur", d.damageNotes, "Ingen skader");
-  html += '<div class="field"><label>Skadebilder</label><div class="thumbs" id="b-thumbs"></div>'+
-    '<input type="file" id="b-photo-input" accept="image/*" style="display:none"></div>';
+  html += '<div class="field"><label>Skadebilder</label>'+
+    '<div class="hint">Bilder du tar med kameraet herfra havner ikke i Bilder-appen på telefonen. Trykk «Lagre» på et bilde for å legge det i telefonen.</div>'+
+    '<div class="thumbs" id="b-thumbs"></div>'+
+    '<input type="file" id="b-photo-input" accept="image/*" multiple style="display:none"></div>';
   html += areaField("b-notes","Notater", d.notes, "Valgfritt");
 
   html += '<button class="btn btn-primary" id="b-save">Lagre booking</button>';
@@ -977,25 +1188,42 @@ function openBookingModal(id){
 
   /* --- lokal tilstand for bilder + auto-pris --- */
   let images = (d.damageImages || []).slice();
+  const imagesAtOpen = images.length;
   let priceAuto = isNew || !d.totalPrice;
+  modalUnsavedCheck = ()=> images.length !== imagesAtOpen;
 
   function drawThumbs(){
     const wrap = mb("#b-thumbs");
-    wrap.innerHTML = images.map((src,i)=>
-      '<div class="thumb"><img src="'+src+'" alt=""><button data-rm="'+i+'">×</button></div>').join("")+
+    wrap.innerHTML = images.map((im,i)=>
+      '<div class="thumb"><img src="'+imgSrc(im)+'" alt="">'+
+      '<button class="rm" data-rm="'+i+'">×</button>'+
+      '<button class="save" data-save="'+i+'">Lagre</button></div>').join("")+
       '<button class="addphoto" id="b-addphoto">+</button>';
     wrap.querySelectorAll("[data-rm]").forEach(btn=>{
       btn.onclick = ()=>{ images.splice(Number(btn.dataset.rm),1); drawThumbs(); };
+    });
+    wrap.querySelectorAll("[data-save]").forEach(btn=>{
+      btn.onclick = ()=> savePhotoToPhone(images[Number(btn.dataset.save)]);
     });
     mb("#b-addphoto").onclick = ()=> mb("#b-photo-input").click();
   }
   drawThumbs();
 
+  let pendingPhotos = 0;
   mb("#b-photo-input").onchange = (e)=>{
-    const file = e.target.files && e.target.files[0];
-    if(!file) return;
-    shrinkImage(file, (dataUrl)=>{ images.push(dataUrl); drawThumbs(); });
+    const files = Array.from(e.target.files || []);
     e.target.value = "";
+    if(!files.length) return;
+    files.forEach(file=>{
+      pendingPhotos++;
+      setSyncStatus("Behandler bilde …");
+      shrinkImage(file, (dataUrl)=>{
+        pendingPhotos--;
+        if(dataUrl) images.push({ name: file.name || "skadefoto.jpg", dataUrl: dataUrl });
+        drawThumbs();
+        if(pendingPhotos === 0) setSyncStatus(unsavedChanges ? "Ikke lagret ennå" : "Klar");
+      });
+    });
   };
 
   function refreshCalc(){
@@ -1041,6 +1269,10 @@ function openBookingModal(id){
   refreshCalc();
 
   mb("#b-save").onclick = ()=>{
+    if(pendingPhotos > 0){
+      alert("Vent litt — " + pendingPhotos + " bilde(r) behandles fortsatt. Prøv igjen om et øyeblikk.");
+      return;
+    }
     const vehicleId = val("#b-vehicle"), customerId = val("#b-customer");
     const startDate = val("#b-start"), endDate = val("#b-end");
     if(!vehicleId){ alert("Velg en bil."); return; }
@@ -1065,9 +1297,13 @@ function openBookingModal(id){
       notes: val("#b-notes"),
       createdAt: b && b.createdAt ? b.createdAt : new Date().toISOString()
     };
-    if(b){ DB.bookings[DB.bookings.findIndex(x=>x.id===b.id)] = rec; }
+    if(b){
+      const idx = DB.bookings.findIndex(x=>x.id===b.id);
+      if(idx >= 0) DB.bookings[idx] = rec; else DB.bookings.push(rec);
+    }
     else { DB.bookings.push(rec); }
-    saveData(); closeModal(); render();
+    modalUnsavedCheck = null;
+    saveData(); closeModal(true); render();
     showToast(b ? "Booking oppdatert" : "Booking opprettet");
   };
 
@@ -1075,27 +1311,92 @@ function openBookingModal(id){
     mb("#b-delete").onclick = ()=>{
       if(!confirm("Slette denne bookingen?")) return;
       DB.bookings = DB.bookings.filter(x=>x.id !== b.id);
-      saveData(); closeModal(); render();
+      modalUnsavedCheck = null;
+      saveData(); closeModal(true); render();
       showToast("Booking slettet");
     };
   }
 }
 
 /* Krymper bilder før de lagres, så databasen ikke sprenges */
+/* Lagrer et skadebilde ut av appen og inn på telefonen. iOS gir ikke nettsider
+   direkte tilgang til Bilder-appen, men delingsarket har «Lagre bilde». */
+async function savePhotoToPhone(im){
+  const src = imgSrc(im);
+  if(!src){ showToast("Fant ikke bildet."); return; }
+  const name = (im && im.name) || "skadefoto.jpg";
+  try{
+    const blob = await (await fetch(src)).blob();
+    const file = new File([blob], name, { type: blob.type || "image/jpeg" });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file] });
+      return;
+    }
+    /* Reserveløsning: åpne bildet i eget vindu, så kan han holde fingeren
+       på bildet og velge «Legg til i Bilder». */
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, "_blank");
+    if(!w) showToast("Tillat popup-vinduer for å lagre bildet.");
+    setTimeout(()=> URL.revokeObjectURL(url), 60000);
+  }catch(e){
+    if(e && e.name === "AbortError") return;   /* han avbrøt delingsarket */
+    console.error(e);
+    showToast("Kunne ikke lagre bildet.");
+  }
+}
+
+/* Maks 1000 px og kvalitet 0,55 gir ca. 130 KB per bilde — skarpt nok til å
+   dokumentere en skade, og lite nok til at mange bilder får plass. */
+const IMG_MAX_PX = 1000;
+const IMG_QUALITY = 0.55;
+const IMG_MAX_BYTES = 700 * 1024;   /* nødbrems per bilde */
+
 function shrinkImage(file, cb){
   const reader = new FileReader();
+  reader.onerror = ()=>{
+    alert("Klarte ikke å lese bildet «" + (file.name||"") + "». Prøv et annet bilde.");
+    cb(null);
+  };
   reader.onload = ()=>{
     const img = new Image();
     img.onload = ()=>{
-      const max = 1200;
       let w = img.width, h = img.height;
-      if(w > max || h > max){ const r = Math.min(max/w, max/h); w = Math.round(w*r); h = Math.round(h*r); }
-      const canvas = document.createElement("canvas");
-      canvas.width = w; canvas.height = h;
-      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-      cb(canvas.toDataURL("image/jpeg", 0.6));
+      if(!w || !h){
+        alert("Bildet «" + (file.name||"") + "» kunne ikke leses. Prøv å ta et skjermbilde av det og last opp skjermbildet i stedet.");
+        cb(null); return;
+      }
+      if(w > IMG_MAX_PX || h > IMG_MAX_PX){
+        const r = Math.min(IMG_MAX_PX/w, IMG_MAX_PX/h);
+        w = Math.round(w*r); h = Math.round(h*r);
+      }
+      let out = "";
+      try{
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        out = canvas.toDataURL("image/jpeg", IMG_QUALITY);
+        /* Blir det likevel for stort, komprimer hardere framfor å gi opp. */
+        let q = IMG_QUALITY;
+        while(out.length > IMG_MAX_BYTES && q > 0.3){
+          q -= 0.1;
+          out = canvas.toDataURL("image/jpeg", q);
+        }
+      }catch(err){ console.error(err); out = ""; }
+
+      if(!out || out.indexOf("data:image") !== 0 || out.length > IMG_MAX_BYTES){
+        alert("Bildet «" + (file.name||"") + "» ble for stort til å lagres, og ble ikke lagt til.");
+        cb(null); return;
+      }
+      cb(out);
     };
-    img.onerror = ()=> cb(reader.result);
+    /* VIKTIG: her lå feilen. Før falt vi tilbake til originalbildet i full
+       størrelse (flere MB). Noen slike bilder fylte opp lagringen, lagringen
+       feilet i stillhet, og bildene forsvant. Nå gir vi heller beskjed. */
+    img.onerror = ()=>{
+      alert("Telefonen klarte ikke å åpne bildet «" + (file.name||"") + "» (kan være HEIC-format).\n\n" +
+            "Tips: åpne bildet i Bilder-appen, trykk Rediger og lagre det — eller ta et skjermbilde av det — og prøv igjen.");
+      cb(null);
+    };
     img.src = reader.result;
   };
   reader.readAsDataURL(file);
@@ -1306,7 +1607,7 @@ document.getElementById("logout-btn").onclick = async ()=>{
   await supabaseClient.auth.signOut();
   showLogin("");
 };
-document.getElementById("modal-close").onclick = closeModal;
+document.getElementById("modal-close").onclick = ()=> closeModal();
 document.querySelectorAll("#tabbar button").forEach(b=>{ b.onclick = ()=> setTab(b.dataset.tab); });
 
 /* Hent friske data når appen hentes fram igjen fra bakgrunnen */
