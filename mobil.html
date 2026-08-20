@@ -214,6 +214,29 @@
     border:none; border-radius:0 0 8px 8px; padding:0;
     background:rgba(15,23,42,0.62); color:#fff; font-size:11px; line-height:22px;
   }
+  .bilkost{padding:10px 0; border-top:1px solid var(--line);}
+  .bilkost:first-child{border-top:none; padding-top:2px;}
+  .bilkost-topp{display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
+  .bilkost-topp .t{font-weight:700; font-size:15px;}
+  .bilkost-sum{font-weight:800; font-size:16px; color:var(--red);}
+  .bilkost-rad{display:flex; gap:10px; margin-top:6px;}
+  .bilkost-rad > div{flex:1; background:var(--bg); border-radius:8px; padding:6px 8px;}
+  .bilkost-lab{font-size:10px; text-transform:uppercase; letter-spacing:.3px; color:var(--muted); font-weight:600;}
+  .bilkost-tall{font-size:14px; font-weight:700; margin-top:1px;}
+  .oppgjor-linje{
+    display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+    padding:6px 0; font-size:14px; color:var(--text);
+    border-top:1px solid var(--line);
+  }
+  .oppgjor-linje:first-child{border-top:none;}
+  .oppgjor-linje.neg span:last-child{color:var(--red); font-weight:600;}
+  .oppgjor-linje.muted{color:var(--muted);}
+  .oppgjor-linje.sum{
+    border-top:2px solid var(--border); margin-top:2px; padding-top:8px;
+    font-weight:800; font-size:16px;
+  }
+  .oppgjor-linje.sum span:last-child{color:var(--green);}
+  .oppgjor-linje.sum.kost span:last-child{color:var(--red);}
   .addphoto{
     width:76px; height:76px; border-radius:8px; border:1px dashed #cbd5e1;
     background:var(--card); color:var(--muted); font-size:24px;
@@ -296,6 +319,8 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
 const STORAGE_KEY = "bobilBookingData_v1";
 const PREV_KEY = "bobilBookingData_v1_forrige";   /* automatisk sikkerhetsnett */
+const STD_INKL_KM = 200;    /* inkluderte kilometer per døgn */
+const STD_KM_PRIS = 3.5;    /* kroner per kilometer utover grensen */
 let DB = { vehicles: [], customers: [], bookings: [], costs: [], fixedCosts: [], settings: {} };
 let saveTimer = null;
 let currentTab = "oversikt";
@@ -311,11 +336,19 @@ function applyMigrations(){
   if(!DB.fixedCosts) DB.fixedCosts = [];
   if(!DB.settings) DB.settings = {};
   ["vehicles","customers","bookings","costs"].forEach(k=>{ if(!DB[k]) DB[k] = []; });
+  DB.vehicles.forEach(v=>{
+    /* Km-grense og pris for overkjørte km. Standard: 200 km i døgnet, 3,50 kr/km. */
+    if(v.includedKmPerDay === undefined || v.includedKmPerDay === null || v.includedKmPerDay === "") v.includedKmPerDay = STD_INKL_KM;
+    if(v.extraKmPrice === undefined || v.extraKmPrice === null || v.extraKmPrice === "") v.extraKmPrice = STD_KM_PRIS;
+    if(v.inServiceFrom === undefined) v.inServiceFrom = "";   /* "ÅÅÅÅ-MM" */
+  });
   DB.bookings.forEach(b=>{
     if(b.depositPaid === undefined) b.depositPaid = false;
     if(b.depositReturned === undefined) b.depositReturned = false;
     if(b.rentPaid === undefined) b.rentPaid = false;
     if(b.damageImages === undefined) b.damageImages = [];
+    if(b.tripCosts === undefined) b.tripCosts = 0;          /* AutoPASS, ferje, drivstoff … */
+    if(b.tripCostsNotes === undefined) b.tripCostsNotes = "";
     /* Bilder har historisk vært lagret på to måter: som ren tekststreng
        (data:image/...) og som objekt {name, dataUrl}. Vi lagrer nå alltid
        objekt, slik at nettsiden, mobilappen og Expo-appen viser de samme
@@ -544,6 +577,96 @@ function gjenopprettForrige(){
               "\n\nDet du har nå blir erstattet.")) return;
   DB = prev.data; applyMigrations(); saveData(); render();
   showToast("Forrige versjon hentet tilbake");
+}
+
+/* =====================================================================
+   DEPOSITUMSOPPGJØR
+   Hva skal trekkes fra depositumet, og hva gjenstår til utbetaling?
+   ===================================================================== */
+function depositOppgjor(b){
+  const v = vehicleById(b.vehicleId);
+  const netter = (b.startDate && b.endDate) ? nightsBetween(b.startDate, b.endDate) : 0;
+  const inklPerDogn = v && v.includedKmPerDay !== undefined && v.includedKmPerDay !== "" ? Number(v.includedKmPerDay) : STD_INKL_KM;
+  const kmPris = v && v.extraKmPrice !== undefined && v.extraKmPrice !== "" ? Number(v.extraKmPrice) : STD_KM_PRIS;
+
+  const inkludert = Math.max(0, netter) * inklPerDogn;
+  const harKm = b.kmStart !== undefined && b.kmStart !== null && b.kmStart !== "" &&
+                b.kmEnd   !== undefined && b.kmEnd   !== null && b.kmEnd   !== "";
+  const kjort = harKm ? Math.max(0, Number(b.kmEnd) - Number(b.kmStart)) : 0;
+  const overkjort = harKm ? Math.max(0, kjort - inkludert) : 0;
+  const kmBelop = Math.round(overkjort * kmPris);
+
+  const reise = Number(b.tripCosts) || 0;
+  const depositum = Number(b.deposit) || 0;
+  const trekk = kmBelop + reise;
+  const tilUtbetaling = Math.max(0, depositum - trekk);
+  /* Overstiger trekket depositumet, skylder kunden mellomlegget. */
+  const restKrav = Math.max(0, trekk - depositum);
+
+  return { netter, inklPerDogn, kmPris, inkludert, harKm, kjort, overkjort,
+           kmBelop, reise, depositum, trekk, tilUtbetaling, restKrav };
+}
+
+/* =====================================================================
+   KOSTNAD PER BIL — løpende fra måneden bilen kom i drift
+   ===================================================================== */
+function maanedNr(ym){                       /* "2024-03" -> antall måneder siden år 0 */
+  if(!ym || !/^\d{4}-\d{2}$/.test(ym)) return null;
+  return Number(ym.slice(0,4)) * 12 + Number(ym.slice(5,7)) - 1;
+}
+function inneUM(){                            /* inneværende måned som "ÅÅÅÅ-MM" */
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
+}
+
+/* Måneden bilen kom i drift. Er den ikke fylt ut, faller vi tilbake på den
+   eldste kostnaden eller bookingen vi kjenner til, slik at tallet gir mening
+   fra dag én uten at han må fylle ut noe. */
+function driftStart(v){
+  if(v.inServiceFrom && /^\d{4}-\d{2}$/.test(v.inServiceFrom)) return v.inServiceFrom;
+  const datoer = [];
+  DB.costs.forEach(k=>{ if(k.vehicleId === v.id && k.date) datoer.push(k.date.slice(0,7)); });
+  DB.bookings.forEach(b=>{ if(b.vehicleId === v.id && b.startDate) datoer.push(b.startDate.slice(0,7)); });
+  datoer.sort();
+  return datoer.length ? datoer[0] : inneUM();
+}
+
+function bilKostnad(v){
+  const start = driftStart(v);
+  const naa = inneUM();
+  const fra = maanedNr(start), til = maanedNr(naa);
+  const maaneder = (fra === null || til === null) ? 1 : Math.max(1, til - fra + 1);
+
+  const fastPerMnd = DB.fixedCosts
+    .filter(f=> f.vehicleId === v.id && f.active !== false)
+    .reduce((s,f)=> s + (Number(f.amountPerMonth)||0), 0);
+
+  /* Engangskostnader fra og med driftsmåneden. */
+  const engangs = DB.costs
+    .filter(k=> k.vehicleId === v.id && k.date && k.date.slice(0,7) >= start)
+    .reduce((s,k)=> s + (Number(k.amount)||0), 0);
+
+  const fastTotalt = fastPerMnd * maaneder;
+  const hittil = fastTotalt + engangs;
+
+  /* I år: engangskostnader i inneværende kalenderår, pluss faste for de
+     månedene bilen faktisk har vært i drift i år. */
+  const aar = String(new Date().getFullYear());
+  const engangsIAar = DB.costs
+    .filter(k=> k.vehicleId === v.id && k.date && k.date.slice(0,4) === aar && k.date.slice(0,7) >= start)
+    .reduce((s,k)=> s + (Number(k.amount)||0), 0);
+  const fraIAar = maanedNr(start > aar+"-01" ? start : aar+"-01");
+  const mndIAar = Math.max(0, (til - fraIAar) + 1);
+  const faktiskIAar = engangsIAar + fastPerMnd * mndIAar;
+
+  return { start, maaneder, fastPerMnd, fastTotalt, engangs, hittil,
+           aarligBudsjett: fastPerMnd * 12, faktiskIAar, mndIAar,
+           snittPerMnd: maaneder ? Math.round(hittil / maaneder) : 0 };
+}
+
+function fmtMaaned(ym){
+  if(!ym || !/^\d{4}-\d{2}$/.test(ym)) return "–";
+  return NB_MONTHS[Number(ym.slice(5,7))-1] + " " + ym.slice(0,4);
 }
 
 /* ===================== HJELPERE ===================== */
@@ -870,7 +993,8 @@ function viewBiler(){
       '<div class="row tappable" data-edit-vehicle="'+v.id+'">'+
         '<div style="width:12px;height:12px;border-radius:6px;margin-top:5px;background:'+esc(v.color||"#3b82f6")+'"></div>'+
         '<div class="grow"><div class="t">'+esc(v.name)+'</div>'+
-        '<div class="s">'+esc(v.regnr||"Uten regnr")+' · '+fmtKr(v.dailyRate)+'/natt</div></div>'+
+        '<div class="s">'+esc(v.regnr||"Uten regnr")+' · '+fmtKr(v.dailyRate)+'/natt</div>'+
+        '<div class="s">Kostnad hittil: '+fmtKr(bilKostnad(v).hittil)+'</div></div>'+
         '<div class="chev">›</div></div>').join("");
   }
   return html + '</div>';
@@ -894,6 +1018,7 @@ function viewKunder(){
 /* ===================== KOSTNADER ===================== */
 function viewKostnader(){
   let html = backLink("Kostnader");
+  html += kostnadPerBilPanel();
   html += '<div class="panel"><h3>Faste månedlige kostnader</h3>';
   if(DB.fixedCosts.length === 0){
     html += '<p class="empty">Ingen faste kostnader.</p>';
@@ -924,6 +1049,36 @@ function viewKostnader(){
   }
   html += '<div style="height:8px"></div><button class="btn btn-ghost btn-sm" data-edit-cost>+ Ny kostnad</button></div>';
   return html;
+}
+
+/* Hva hver bil har kostet, løpende fra måneden den kom i drift. */
+function kostnadPerBilPanel(){
+  if(DB.vehicles.length === 0) return "";
+  let html = '<div class="panel"><h3>Kostnad per bil</h3>';
+  html += DB.vehicles.map(v=>{
+    const k = bilKostnad(v);
+    return '<div class="bilkost">'+
+      '<div class="bilkost-topp"><span class="t">'+esc(v.name)+'</span>'+
+      '<span class="bilkost-sum">'+fmtKr(k.hittil)+'</span></div>'+
+      '<div class="s">I drift siden '+fmtMaaned(k.start).toLowerCase()+' · '+k.maaneder+' mnd · snitt '+fmtKr(k.snittPerMnd)+'/mnd</div>'+
+      '<div class="bilkost-rad">'+
+        '<div><div class="bilkost-lab">Faste hittil</div><div class="bilkost-tall">'+fmtKr(k.fastTotalt)+'</div></div>'+
+        '<div><div class="bilkost-lab">Engangs hittil</div><div class="bilkost-tall">'+fmtKr(k.engangs)+'</div></div>'+
+      '</div>'+
+      '<div class="bilkost-rad">'+
+        '<div><div class="bilkost-lab">Faktisk i år</div><div class="bilkost-tall">'+fmtKr(k.faktiskIAar)+'</div></div>'+
+        '<div><div class="bilkost-lab">Årlig budsjett</div><div class="bilkost-tall">'+fmtKr(k.aarligBudsjett)+'</div></div>'+
+      '</div>'+
+    '</div>';
+  }).join("");
+  const sumHittil = DB.vehicles.reduce((s,v)=> s + bilKostnad(v).hittil, 0);
+  const sumBudsjett = DB.vehicles.reduce((s,v)=> s + bilKostnad(v).aarligBudsjett, 0);
+  if(DB.vehicles.length > 1){
+    html += '<div class="oppgjor-linje sum kost"><span>Alle biler hittil</span><span>'+fmtKr(sumHittil)+'</span></div>'+
+            '<div class="hint">Årlig budsjett for hele flåten: '+fmtKr(sumBudsjett)+'</div>';
+  }
+  html += '<div class="hint">«Faste hittil» er de faste månedskostnadene ganget med antall måneder bilen har vært i drift. Inneværende måned regnes som hel.</div>';
+  return html + '</div>';
 }
 
 /* ===================== MER ===================== */
@@ -1162,17 +1317,27 @@ function openBookingModal(id){
   html += checkField("b-deppaid","Depositum innbetalt", d.depositPaid);
   html += '<div id="b-deppaid-wrap" style="display:'+(d.depositPaid?"block":"none")+'">'+
     textField("b-deppaid-date","Dato betalt", d.depositPaidDate||"", "date")+'</div>';
-  html += checkField("b-depret","Depositum returnert", d.depositReturned);
-  html += '<div id="b-depret-wrap" style="display:'+(d.depositReturned?"block":"none")+'">'+
-    textField("b-depret-date","Dato returnert", d.depositReturnedDate||"", "date")+
-    textField("b-depret-amount","Returnert beløp (kr)", d.depositReturnedAmount==null?"":d.depositReturnedAmount, "number", "Hele depositumet", ' inputmode="numeric"')+
-    textField("b-depnotes","Notat depositum", d.depositNotes||"", "text", "Valgfritt")+'</div>';
   html += '</div>';
 
   html += '<div class="field-2">'+
     textField("b-km-start","Km ved henting", d.kmStart==null?"":d.kmStart, "number", "0", ' inputmode="numeric"')+
     textField("b-km-end","Km ved levering", d.kmEnd==null?"":d.kmEnd, "number", "0", ' inputmode="numeric"')+'</div>';
   html += '<div class="hint" id="b-km-hint"></div>';
+
+  html += '<div class="field-2">'+
+    textField("b-trip","Reisekostnader (kr)", d.tripCosts||"", "number", "0", ' inputmode="numeric"')+
+    textField("b-trip-notes","Hva gjelder det?", d.tripCostsNotes||"", "text", "AutoPASS, ferje …")+'</div>';
+
+  /* Oppgjøret: hva trekkes, og hva gjenstår til utbetaling. */
+  html += '<div class="panel" id="b-oppgjor-panel"><h3>Depositumsoppgjør</h3><div id="b-oppgjor"></div></div>';
+
+  html += '<div class="panel" style="padding:12px 12px 2px">';
+  html += checkField("b-depret","Depositum returnert", d.depositReturned);
+  html += '<div id="b-depret-wrap" style="display:'+(d.depositReturned?"block":"none")+'">'+
+    textField("b-depret-date","Dato returnert", d.depositReturnedDate||"", "date")+
+    textField("b-depret-amount","Returnert beløp (kr)", d.depositReturnedAmount==null?"":d.depositReturnedAmount, "number", "Hele depositumet", ' inputmode="numeric"')+
+    textField("b-depnotes","Notat depositum", d.depositNotes||"", "text", "Valgfritt")+'</div>';
+  html += '</div>';
 
   html += areaField("b-damage","Skaderapport / notat ved retur", d.damageNotes, "Ingen skader");
   html += '<div class="field"><label>Skadebilder</label>'+
@@ -1190,6 +1355,8 @@ function openBookingModal(id){
   let images = (d.damageImages || []).slice();
   const imagesAtOpen = images.length;
   let priceAuto = isNew || !d.totalPrice;
+  /* Har han allerede skrevet inn et returbeløp selv, lar vi det stå i fred. */
+  let returAuto = d.depositReturnedAmount === undefined || d.depositReturnedAmount === null || d.depositReturnedAmount === "";
   modalUnsavedCheck = ()=> images.length !== imagesAtOpen;
 
   function drawThumbs(){
@@ -1243,12 +1410,56 @@ function openBookingModal(id){
       hint.textContent = "Velg bil og gyldige datoer for prisforslag.";
       conflictEl.style.display = "none";
     }
-    const ks = val("#b-km-start"), ke = val("#b-km-end");
-    mb("#b-km-hint").textContent = (ks !== "" && ke !== "" && Number(ke) >= Number(ks))
-      ? (Number(ke) - Number(ks)).toLocaleString("nb-NO") + " km kjørt i perioden" : "";
+    tegnOppgjor();
   }
 
-  ["#b-vehicle","#b-start","#b-end","#b-km-start","#b-km-end"].forEach(sel=>{
+  /* Regner ut oppgjøret på nytt fra det som står i skjemaet akkurat nå. */
+  function tegnOppgjor(){
+    const utkast = {
+      vehicleId: val("#b-vehicle"),
+      startDate: val("#b-start"), endDate: val("#b-end"),
+      deposit: num("#b-deposit"),
+      kmStart: val("#b-km-start") !== "" ? num("#b-km-start") : undefined,
+      kmEnd:   val("#b-km-end")   !== "" ? num("#b-km-end")   : undefined,
+      tripCosts: num("#b-trip")
+    };
+    const o = depositOppgjor(utkast);
+
+    mb("#b-km-hint").textContent = o.harKm
+      ? o.kjort.toLocaleString("nb-NO") + " km kjørt · " + o.inkludert.toLocaleString("nb-NO") +
+        " km inkludert (" + o.inklPerDogn + " km × " + o.netter + " døgn)"
+      : (o.netter > 0 ? o.inkludert.toLocaleString("nb-NO") + " km inkludert i denne leien" : "");
+
+    const linje = (tekst, belop, klasse) =>
+      '<div class="oppgjor-linje'+(klasse?" "+klasse:"")+'"><span>'+tekst+'</span><span>'+belop+'</span></div>';
+
+    let html = linje("Depositum", fmtKr(o.depositum));
+    if(!o.harKm){
+      html += '<div class="hint">Fyll ut kilometerstand ved henting og levering for å regne ut eventuell overkjøring.</div>';
+    } else if(o.overkjort > 0){
+      const prisTekst = Number.isInteger(o.kmPris) ? o.kmPris + " kr"
+                        : o.kmPris.toFixed(2).replace(".", ",") + " kr";
+      html += linje("Overkjørt " + o.overkjort.toLocaleString("nb-NO") + " km × " + prisTekst,
+                    "− " + fmtKr(o.kmBelop), "neg");
+    } else {
+      html += linje("Innenfor km-grensen", "0 kr", "muted");
+    }
+    if(o.reise > 0) html += linje("Reisekostnader" + (val("#b-trip-notes") ? " (" + esc(val("#b-trip-notes")) + ")" : ""),
+                                  "− " + fmtKr(o.reise), "neg");
+    html += linje("Til utbetaling", fmtKr(o.tilUtbetaling), "sum");
+    if(o.restKrav > 0){
+      html += '<div class="hint warn">Trekket er ' + fmtKr(o.restKrav) + ' større enn depositumet. Kunden skylder ' +
+              fmtKr(o.restKrav) + ' i tillegg.</div>';
+    }
+    mb("#b-oppgjor").innerHTML = html;
+
+    /* Fyll ut returbeløpet automatisk — men aldri overskriv et tall han
+       selv har skrevet inn. */
+    if(returAuto) mb("#b-depret-amount").value = o.tilUtbetaling;
+  }
+
+  mb("#b-depret-amount").addEventListener("input", ()=>{ returAuto = false; });
+  ["#b-vehicle","#b-start","#b-end","#b-km-start","#b-km-end","#b-deposit","#b-trip","#b-trip-notes"].forEach(sel=>{
     mb(sel).addEventListener("change", refreshCalc);
     mb(sel).addEventListener("input", refreshCalc);
   });
@@ -1292,6 +1503,8 @@ function openBookingModal(id){
       depositNotes: chk("#b-depret") ? val("#b-depnotes") : "",
       kmStart: val("#b-km-start") !== "" ? num("#b-km-start") : undefined,
       kmEnd: val("#b-km-end") !== "" ? num("#b-km-end") : undefined,
+      tripCosts: val("#b-trip") !== "" ? num("#b-trip") : 0,
+      tripCostsNotes: val("#b-trip-notes"),
       damageNotes: val("#b-damage"),
       damageImages: images,
       notes: val("#b-notes"),
@@ -1405,7 +1618,8 @@ function shrinkImage(file, cb){
 /* ===================== BIL-EDITOR ===================== */
 function openVehicleModal(id){
   const v = id ? vehicleById(id) : null;
-  const d = v || { name:"", regnr:"", dailyRate:"", weekendRate:"", highSeasonRate:"", hsStart:"", hsEnd:"", color:VEHICLE_COLORS[0], notes:"" };
+  const d = v || { name:"", regnr:"", dailyRate:"", weekendRate:"", highSeasonRate:"", hsStart:"", hsEnd:"",
+                   color:VEHICLE_COLORS[0], notes:"", inServiceFrom:"", includedKmPerDay:STD_INKL_KM, extraKmPrice:STD_KM_PRIS };
   let html = "";
   html += textField("v-name","Navn", d.name, "text", "F.eks. Hobby Optima");
   html += textField("v-regnr","Registreringsnummer", d.regnr, "text", "AB 12345");
@@ -1416,6 +1630,11 @@ function openVehicleModal(id){
   html += '<div class="field-2">'+
     textField("v-hs-start","Høysesong fra (DD.MM)", d.hsStart, "text", "15.06")+
     textField("v-hs-end","Høysesong til (DD.MM)", d.hsEnd, "text", "15.08")+'</div>';
+  html += textField("v-inservice","I drift fra (måned)", d.inServiceFrom, "month", "", '');
+  html += '<div class="hint">Brukes til å regne ut hva bilen har kostet deg totalt. La stå tom, så gjetter appen ut fra eldste kostnad eller booking.</div>';
+  html += '<div class="field-2">'+
+    textField("v-inkl-km","Inkludert km per døgn", d.includedKmPerDay, "number", String(STD_INKL_KM), ' inputmode="numeric"')+
+    textField("v-km-pris","Pris per km utover (kr)", d.extraKmPrice, "number", String(STD_KM_PRIS), ' inputmode="decimal"')+'</div>';
   html += '<div class="field"><label>Farge i kalenderen</label><div class="swatches" id="v-colors">'+
     VEHICLE_COLORS.map(c=>'<button class="swatch'+(c===d.color?" on":"")+'" data-color="'+c+'" style="background:'+c+'"></button>').join("")+
     '</div></div>';
@@ -1440,6 +1659,9 @@ function openVehicleModal(id){
       id: v ? v.id : uid(), name, regnr: val("#v-regnr").trim(),
       dailyRate: num("#v-daily"), weekendRate: num("#v-weekend"), highSeasonRate: num("#v-high"),
       hsStart: val("#v-hs-start").trim(), hsEnd: val("#v-hs-end").trim(),
+      inServiceFrom: val("#v-inservice"),
+      includedKmPerDay: val("#v-inkl-km") !== "" ? num("#v-inkl-km") : STD_INKL_KM,
+      extraKmPrice: val("#v-km-pris") !== "" ? num("#v-km-pris") : STD_KM_PRIS,
       color, notes: val("#v-notes")
     };
     if(v){ DB.vehicles[DB.vehicles.findIndex(x=>x.id===v.id)] = rec; }
