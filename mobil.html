@@ -880,6 +880,8 @@ function viewOversikt(){
         '<div class="bar-track"><div class="bar-fill" style="width:'+((r.rev/maxRev)*100)+'%;background:'+esc(r.v.color||"#3b82f6")+'"></div></div></div>'
       ).join("")) + '</div>';
 
+  html += kostnadPerBilPanel();
+
   html += '<div class="panel"><h3>⚠️ Krever oppfølging</h3>' +
     (attention.length === 0 ? '<p class="empty">Ingen åpne saker akkurat nå. 🎉</p>' :
       attention.map(b=>{
@@ -1054,7 +1056,7 @@ function viewKostnader(){
 /* Hva hver bil har kostet, løpende fra måneden den kom i drift. */
 function kostnadPerBilPanel(){
   if(DB.vehicles.length === 0) return "";
-  let html = '<div class="panel"><h3>Kostnad per bil</h3>';
+  let html = '<div class="panel"><h3>Kostnad per bil — hittil</h3>';
   html += DB.vehicles.map(v=>{
     const k = bilKostnad(v);
     return '<div class="bilkost">'+
@@ -1077,7 +1079,7 @@ function kostnadPerBilPanel(){
     html += '<div class="oppgjor-linje sum kost"><span>Alle biler hittil</span><span>'+fmtKr(sumHittil)+'</span></div>'+
             '<div class="hint">Årlig budsjett for hele flåten: '+fmtKr(sumBudsjett)+'</div>';
   }
-  html += '<div class="hint">«Faste hittil» er de faste månedskostnadene ganget med antall måneder bilen har vært i drift. Inneværende måned regnes som hel.</div>';
+  html += '<div class="hint">Løper fra måneden bilen kom i drift, og inneværende måned regnes som hel. Sett «I drift fra» på bilen for at tallet skal bli riktig — er feltet tomt, gjettes måneden ut fra eldste kostnad eller booking.</div>';
   return html + '</div>';
 }
 

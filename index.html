@@ -1037,6 +1037,42 @@ function renderDashboard(){
     </div>
 
     <div class="panel">
+      <h2>Kostnad per bil — hittil</h2>
+      ${DB.vehicles.length===0 ? '<div class="empty">Ingen biler lagt til ennå.</div>' : `
+      <table>
+        <tr><th>Bil</th><th>I drift siden</th><th>Faste</th><th>Engangs</th><th>Hittil totalt</th><th>Snitt/mnd</th><th>Faktisk i år</th><th>Årlig budsjett</th></tr>
+        ${DB.vehicles.map(v=>{
+          const k = bilKostnad(v);
+          return `<tr>
+            <td><span class="tag"><span class="color-dot" style="background:${v.color}"></span>${v.name}</span></td>
+            <td>${fmtMaaned(k.start)} <span style="color:var(--muted)">(${k.maaneder} mnd)</span></td>
+            <td>${fmtKr(k.fastTotalt)}</td>
+            <td>${fmtKr(k.engangs)}</td>
+            <td style="font-weight:700; color:#f87171;">${fmtKr(k.hittil)}</td>
+            <td>${fmtKr(k.snittPerMnd)}</td>
+            <td>${fmtKr(k.faktiskIAar)}</td>
+            <td>${fmtKr(k.aarligBudsjett)}</td>
+          </tr>`;
+        }).join("")}
+        ${DB.vehicles.length>1 ? `<tr style="font-weight:700;">
+            <td>Alle biler</td><td></td>
+            <td>${fmtKr(DB.vehicles.reduce((s,v)=>s+bilKostnad(v).fastTotalt,0))}</td>
+            <td>${fmtKr(DB.vehicles.reduce((s,v)=>s+bilKostnad(v).engangs,0))}</td>
+            <td style="color:#f87171;">${fmtKr(DB.vehicles.reduce((s,v)=>s+bilKostnad(v).hittil,0))}</td>
+            <td></td>
+            <td>${fmtKr(DB.vehicles.reduce((s,v)=>s+bilKostnad(v).faktiskIAar,0))}</td>
+            <td>${fmtKr(DB.vehicles.reduce((s,v)=>s+bilKostnad(v).aarligBudsjett,0))}</td>
+          </tr>` : ""}
+      </table>
+      <div class="empty" style="text-align:left; padding-top:8px;">
+        Løper fra måneden bilen kom i drift, og inneværende måned regnes som hel.
+        Sett «I drift fra» på bilen under Biler for at tallet skal bli riktig — er feltet tomt,
+        gjettes måneden ut fra eldste kostnad eller booking.
+      </div>
+      `}
+    </div>
+
+    <div class="panel">
       <h2>⚠️ Krever oppfølging (betaling/depositum)</h2>
       ${needsAttention.length===0 ? '<div class="empty">Ingen åpne saker akkurat nå. 🎉</div>' : `
       <table>
